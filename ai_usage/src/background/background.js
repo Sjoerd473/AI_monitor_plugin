@@ -1,56 +1,148 @@
-// import { BACKEND_URL, EXTENSION_API_KEY } from "../lib/config.js";
-// import { getSessionId } from "../lib/session.js";
+// =========================
+//  USER ID (stable)
+// =========================
+async function getOrCreateUserId() {
+    return new Promise(resolve => {
+        chrome.storage.local.get(["user_id"], async data => {
+            if (data.user_id) {
+                resolve(data.user_id);
+                return;
+            }
 
-// chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-//     if (msg.type === "PROMPT_EVENT") {
-//         handlePromptEvent(msg.payload);
-//     }
-// });
+            const seed = crypto.getRandomValues(new Uint8Array(32));
+            const installTime = Date.now().toString();
+            const combined = new Uint8Array([...seed, ...new TextEncoder().encode(installTime)]);
 
-// async function handlePromptEvent(event) {
-//     const session_id = await getSessionId();
+            const hashBuffer = await crypto.subtle.digest("SHA-256", combined);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const userId = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 
-//     const payload = {
-//         session_id,
-//         timestamp: event.timestamp,
-//         source: event.source,
-//         model: event.model,
-//         tokens_in: event.tokens_in
-//         // tokens_out, energy_wh can be added later
-//     };
+            chrome.storage.local.set({ user_id: userId }, () => resolve(userId));
+        });
+    });
+}
 
-//     try {
-//         // await fetch(BACKEND_URL, {
-//         //   method: "POST",
-//         //   headers: {
-//         //     "Content-Type": "application/json",
-//         //     "X-API-Key": EXTENSION_API_KEY
-//         //   },
-//         //   body: JSON.stringify(payload)
-//         // });
-//         console.log("promt event received:", payload)
-//     } catch (e) {
-//         // you can add retry/queue logic later
-//         console.warn("Failed to send prompt event", e);
-//     }
-// }
+// =========================
+//  SESSION ID + METRICS
+// =========================
+function generateRandomId() {
+    const arr = crypto.getRandomValues(new Uint8Array(16));
+    return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
+async function getOrCreateSessionId() {
+    return new Promise(resolve => {
+        chrome.storage.local.get(
+            ["session_id", "session_last_active", "session_start", "session_prompt_count"],
+            data => {
 
+                const now = Date.now();
+                const lastActive = data.session_last_active || 0;
+                const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 min
 
-console.log("[AI Usage Meter] Background service worker loaded");
+                let sessionId = data.session_id;
 
+                // NEW SESSION?
+                if (!sessionId || (now - lastActive) > SESSION_TIMEOUT) {
+                    sessionId = generateRandomId();
+
+                    chrome.storage.local.set({
+                        session_id: sessionId,
+                        session_last_active: now,
+                        session_start: now,
+                        session_prompt_count: 0
+                    });
+                } else {
+                    chrome.storage.local.set({ session_last_active: now });
+                }
+
+                resolve(sessionId);
+            }
+        );
+    });
+}
+
+async function getOrCreateSessionStart() {
+    return new Promise(resolve => {
+        chrome.storage.local.get(["session_start"], data => {
+            const now = Date.now();
+            if (!data.session_start) {
+                chrome.storage.local.set({ session_start: now });
+                resolve(now);
+            } else {
+                resolve(data.session_start);
+            }
+        });
+    });
+}
+
+async function incrementSessionPromptCount() {
+    return new Promise(resolve => {
+        chrome.storage.local.get(["session_prompt_count"], data => {
+            const count = (data.session_prompt_count || 0) + 1;
+            chrome.storage.local.set({ session_prompt_count: count });
+            resolve(count);
+        });
+    });
+}
+
+async function updateLastPromptTime() {
+    const now = Date.now();
+    chrome.storage.local.set({ last_prompt_time: now });
+    return now;
+}
+
+async function getTimeSinceLastPrompt() {
+    return new Promise(resolve => {
+        chrome.storage.local.get(["last_prompt_time"], data => {
+            const now = Date.now();
+            const last = data.last_prompt_time || now;
+            resolve(now - last);
+        });
+    });
+}
+
+// =========================
+//  IDENTIFIER REQUEST HANDLER
+// =========================
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === "GET_IDENTIFIERS") {
+        Promise.all([
+            getOrCreateUserId(),
+            getOrCreateSessionId(),
+            getOrCreateSessionStart(),
+            incrementSessionPromptCount(),
+            getTimeSinceLastPrompt()
+        ]).then(([user_id, session_id, session_start, session_prompt_count, time_since_last_prompt]) => {
+
+            updateLastPromptTime();
+
+            sendResponse({
+                user_id,
+                session_id,
+                session_start,
+                session_prompt_count,
+                time_since_last_prompt,
+                extension_version: chrome.runtime.getManifest().version
+            });
+        });
+
+        return true; // keep async channel open
+    }
+});
+
+// =========================
+//  PROMPT EVENT INGESTION
+// =========================
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "PROMPT_EVENT") {
         const payload = msg.payload;
 
         console.log("[AI Usage Meter] Prompt event received:", payload);
 
-        // Send to local FastAPI server
         fetch("http://localhost:8000/events", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         })
             .then(res => res.text())
@@ -60,3 +152,5 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ status: "ok" });
     }
 });
+
+console.log("[AI Usage Meter] Background service worker loaded");
