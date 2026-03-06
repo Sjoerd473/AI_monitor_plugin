@@ -1,185 +1,223 @@
 // =========================
-//  USER ID (stable)
+//  CONFIG
+// =========================
+
+// global settings for session lifetime and ID lengths
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 min
+const DEFAULT_SESSION_BYTES = 16;
+const DEFAULT_USER_BYTES = 32;
+const SECRET_KEY = "super_secret_key_here";
+
+// =========================
+//  STORAGE HELPERS
+// =========================
+
+// helper functions to retrieve or put things in storage
+// chrome.storage.local is the storage for extensions
+// and it demands async functions and promises
+async function storageGet(keys) {
+    return new Promise(resolve => chrome.storage.local.get(keys, resolve));
+}
+
+async function storageSet(items) {
+    return new Promise(resolve => chrome.storage.local.set(items, resolve));
+}
+
+// =========================
+//  ID GENERATORS
+// =========================
+function generateRandomId(bytes = DEFAULT_SESSION_BYTES) {
+    // generate an array with 16 (by default) bytes
+    // this does not return the type of array we want
+    const arr = crypto.getRandomValues(new Uint8Array(bytes));
+    // destructure and immediately turn it into an actual array
+    // then use a map() to turn each value of said array into hex chars instead of bytes
+    // padStart is to always ensure two digits (adds a 0 to the start if it's only 1 char long)
+    return [...arr].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// =========================
+//  USER ID (STABLE)
 // =========================
 async function getOrCreateUserId() {
-    return new Promise(resolve => {
-        chrome.storage.local.get(["user_id"], async data => {
-            if (data.user_id) {
-                resolve(data.user_id);
-                return;
-            }
+    // looks for a user_id in storage and returns it if found
+    const { user_id } = await storageGet("user_id");
+    if (user_id) return user_id;
 
-            const seed = crypto.getRandomValues(new Uint8Array(32));
-            const installTime = Date.now().toString();
-            const combined = new Uint8Array([...seed, ...new TextEncoder().encode(installTime)]);
-
-            const hashBuffer = await crypto.subtle.digest("SHA-256", combined);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const userId = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-
-            chrome.storage.local.set({ user_id: userId }, () => resolve(userId));
-        });
-    });
+    // if there is no user_id, create a new one and store it
+    const newUserId = generateRandomId(DEFAULT_USER_BYTES);
+    // puts it in storage as a key-value pair
+    await storageSet({ user_id: newUserId });
+    return newUserId;
 }
 
 // =========================
-//  SESSION ID + METRICS
+//  SESSION MANAGEMENT
 // =========================
-function generateRandomId() {
-    const arr = crypto.getRandomValues(new Uint8Array(16));
-    return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
 async function getOrCreateSessionId() {
-    return new Promise(resolve => {
-        chrome.storage.local.get(
-            ["session_id", "session_last_active", "session_start", "session_prompt_count"],
-            data => {
+    const now = Date.now();
+    // pulls data about the sessions from storage
+    const data = await storageGet(["session_id", "session_last_active", "session_start", "session_prompt_count"]);
 
-                const now = Date.now();
-                const lastActive = data.session_last_active || 0;
-                const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 min
+    // reads the last active session from storage, otherwise
+    // ?? is a Nullish Coalescing Operator
+    // returns the right hand side if the left hand side is null or undefined
+    // '||' would fail, as 0 is a valid timestamp, but would count as false
+    const lastActive = data.session_last_active ?? 0;
+    let sessionId = data.session_id;
+    // expired will be true if there is no sessionId, or if 30 mins have passed
+    const expired = !sessionId || (now - lastActive) > SESSION_TIMEOUT;
 
-                let sessionId = data.session_id;
-
-                // NEW SESSION?
-                if (!sessionId || (now - lastActive) > SESSION_TIMEOUT) {
-                    sessionId = generateRandomId();
-
-                    chrome.storage.local.set({
-                        session_id: sessionId,
-                        session_last_active: now,
-                        session_start: now,
-                        session_prompt_count: 0
-                    });
-                } else {
-                    chrome.storage.local.set({ session_last_active: now });
-                }
-
-                resolve(sessionId);
-            }
-        );
-    });
+    if (expired) {
+        // so if more than 30 mins has passed, we create a new session
+        sessionId = generateRandomId();
+        await storageSet({
+            session_id: sessionId,
+            session_last_active: now,
+            session_start: now,
+            session_prompt_count: 0
+        });
+    } else {
+        // we arrive here if the session exists, so we update the timestamp
+        await storageSet({ session_last_active: now });
+    }
+    // and then return the sessionId in any case (a new one or an old one)
+    return sessionId;
 }
 
 async function getOrCreateSessionStart() {
-    return new Promise(resolve => {
-        chrome.storage.local.get(["session_start"], data => {
-            const now = Date.now();
-            if (!data.session_start) {
-                chrome.storage.local.set({ session_start: now });
-                resolve(now);
-            } else {
-                resolve(data.session_start);
-            }
-        });
-    });
+    // looks for a session in storage, returns it if it exists
+    const { session_start } = await storageGet("session_start");
+    if (session_start != null) return session_start;
+
+    // otherwise creates a new session_start with the current time
+    // and returns the current time
+    const now = Date.now();
+    await storageSet({ session_start: now });
+    return now;
 }
 
 async function incrementSessionPromptCount() {
-    return new Promise(resolve => {
-        chrome.storage.local.get(["session_prompt_count"], data => {
-            const count = (data.session_prompt_count || 0) + 1;
-            chrome.storage.local.set({ session_prompt_count: count });
-            resolve(count);
-        });
-    });
+    // pull the session prompt count out of storage
+    const { session_prompt_count } = await storageGet("session_prompt_count");
+    // if there is no prompt_count the function returns 0, then adds 1
+    // otherwise it returns prompt_count +1
+    const count = (session_prompt_count ?? 0) + 1;
+    // we update the count in storage
+    await storageSet({ session_prompt_count: count });
+    // then return the new count
+    return count;
 }
 
 async function updateLastPromptTime() {
     const now = Date.now();
-    chrome.storage.local.set({ last_prompt_time: now });
+    await storageSet({ last_prompt_time: now });
     return now;
 }
 
 async function getTimeSinceLastPrompt() {
-    return new Promise(resolve => {
-        chrome.storage.local.get(["last_prompt_time"], data => {
-            const now = Date.now();
-            const last = data.last_prompt_time || now;
-            resolve(now - last);
-        });
-    });
+    const { last_prompt_time } = await storageGet("last_prompt_time");
+    // if there is no last_prompt_time, we return the current time
+    const last = last_prompt_time ?? Date.now();
+    // we return the current time minus the timestamp of the last prompt
+    return Date.now() - last;
 }
 
 // =========================
-//  IDENTIFIER REQUEST HANDLER
+//  HMAC SIGNING
 // =========================
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.type === "GET_IDENTIFIERS") {
-        Promise.all([
-            getOrCreateUserId(),
-            getOrCreateSessionId(),
-            getOrCreateSessionStart(),
-            incrementSessionPromptCount(),
-            getTimeSinceLastPrompt()
-        ]).then(([user_id, session_id, session_start, session_prompt_count, time_since_last_prompt]) => {
-
-            updateLastPromptTime();
-
-            sendResponse({
-                user_id,
-                session_id,
-                session_start,
-                session_prompt_count,
-                time_since_last_prompt,
-                extension_version: chrome.runtime.getManifest().version
-            });
-        });
-
-        return true; // keep async channel open
-    }
-});
-
-// =========================
-//  PROMPT EVENT INGESTION
-// =========================
-const SECRET_KEY = "super_secret_key_here";
-
-async function computeHMAC(payloadString, keyString) {
+async function computeHMAC(payloadString, key = SECRET_KEY) {
     const encoder = new TextEncoder();
-    const keyBytes = encoder.encode(keyString);
-    const payloadBytes = encoder.encode(payloadString);
-
     const cryptoKey = await crypto.subtle.importKey(
+        // the key we are importing is raw/not encoded
         "raw",
-        keyBytes,
+        // now we pass our key into the encoder
+        encoder.encode(key),
+        // specify the algorithm (HMAC) and protocol (SHA-256)
+        // they need to be this way to correspond with the backend
         { name: "HMAC", hash: "SHA-256" },
+        // false= cannot be exported (secure)
         false,
+        // the key can only sign, not verify
         ["sign"]
     );
-
-    const signature = await crypto.subtle.sign("HMAC", cryptoKey, payloadBytes);
-
-    return [...new Uint8Array(signature)]
-        .map(b => b.toString(16).padStart(2, "0"))
-        .join("");
+    // we then sign the payload with "HMAC" and our secret key encode our payload to bytes
+    const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(payloadString));
+    // then turn the whole signature into a 64-char hex signature
+    return [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// =========================
+//  MESSAGE HANDLER
+// =========================
+
+// chromes addListener expects a sync callback, but we need async/await
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.type === "PROMPT_EVENT") {
-        const payload = msg.payload;
-        const payloadString = JSON.stringify(payload);
+    // so we use an IIFE (Immediately Invoked Function Expression) (async () => {...}) ()
+    (async () => {
+        switch (msg.type) {
+            // this is called by the init(), so at the start of a session
+            case "GET_IDENTIFIERS": {
+                // array destructuring to create the variables on a single line
+                const [user_id, session_id, session_start, session_prompt_count, time_since_last_prompt] =
+                    // Promise.all will wait for all the functions to finish, then return all data at once
+                    await Promise.all([
+                        getOrCreateUserId(),
+                        getOrCreateSessionId(),
+                        getOrCreateSessionStart(),
+                        incrementSessionPromptCount(),
+                        getTimeSinceLastPrompt()
+                    ]);
 
-        console.log("[AI Usage Meter] Prompt event received:", payload);
+                // update the timestamp only when the promises have finished
+                await updateLastPromptTime();
 
-        computeHMAC(payloadString, SECRET_KEY).then(signature => {
-            fetch("http://localhost:8000/events", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Signature": signature
-                },
-                body: payloadString
-            })
-                .then(res => res.text())
-                .then(data => console.log("[AI Usage Meter] Server response:", data))
-                .catch(err => console.error("[AI Usage Meter] Failed to send:", err));
-        });
+                // send the response back to the content script
+                sendResponse({
+                    user_id,
+                    session_id,
+                    session_start,
+                    session_prompt_count,
+                    time_since_last_prompt,
+                    extension_version: chrome.runtime.getManifest().version
+                });
+                break;
+            }
+            // this is called after every chatGPT response
+            case "PROMPT_EVENT": {
+                try {
+                    // convert  the event to json
+                    const payloadString = JSON.stringify(msg.payload);
+                    console.log("[AI Usage Meter] Prompt event received:", msg.payload);
+                    // sign it
+                    const signature = await computeHMAC(payloadString);
+                    // then send it on to the backend
+                    const res = await fetch("http://localhost:8000/events", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-Signature": signature
+                        },
+                        // a raw json string for HMAC verification
+                        body: payloadString
+                    });
 
-        sendResponse({ status: "ok" });
-    }
+                    console.log("[AI Usage Meter] Server response:", await res.text());
+                } catch (err) {
+                    console.error("[AI Usage Meter] Failed to send:", err);
+                }
+                // Acknowledge to content script
+                sendResponse({ status: "ok" });
+                break;
+            }
+
+            default:
+                break;
+        }
+    })();
+    // without return true Chrome closes the channel immediately, and sendResponse() would fail
+    // because we have async functions
+    return true; // keep async channel open for async sendResponse
 });
-
 
 console.log("[AI Usage Meter] Background service worker loaded");

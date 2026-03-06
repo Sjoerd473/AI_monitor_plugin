@@ -1,633 +1,504 @@
-// ================== AI Usage Meter – ChatGPT detector ==================
-let lastRegenerateUsed = false;
-let lastSuggestedPromptUsed = false;
+// Modern AI Usage Meter – ChatGPT detector (ES6+ with working Chrome messaging)
+// COMPLETE WORKING VERSION
+class ChatGPTDetector {
+    constructor() {
+        // initialized as null first
+        this.userId = null;
+        this.sessionId = null;
+        this.sessionStart = null;
+        this.sessionPromptCount = null;
+        this.timeSinceLastPrompt = null;
+        this.extensionVersion = null;
 
-let EXTENSION_VERSION = null;
-let SESSION_START = null;
-let SESSION_PROMPT_COUNT = null;
-let TIME_SINCE_LAST_PROMPT = null;
-
-const EVENT_SCHEMA_VERSION = 1; //Change when the schema changes for compatability reasons
-
-chrome.runtime.sendMessage({ type: "GET_IDENTIFIERS" }, response => {
-    USER_ID = response.user_id;
-    SESSION_ID = response.session_id;
-    EXTENSION_VERSION = response.extension_version;
-});
-
-
-chrome.runtime.sendMessage({ type: "GET_IDENTIFIERS" }, response => {
-    USER_ID = response.user_id;
-    SESSION_ID = response.session_id;
-    SESSION_START = response.session_start;
-    SESSION_PROMPT_COUNT = response.session_prompt_count;
-    TIME_SINCE_LAST_PROMPT = response.time_since_last_prompt;
-    EXTENSION_VERSION = response.extension_version;
-});
-
-
-// --- Utility: wait for element by selector --------------------------------
-function waitForElement(selector, callback) {
-    const el = document.querySelector(selector);
-    if (el) {
-        callback(el);
-        return;
+        this.lastRegenerateUsed = false;
+        this.lastSuggestedPromptUsed = false;
+        this.schemaVersion = 1;
+        // this means init() is called even before constructor finishes
+        // this also means init() is always called when a new instance of ChatGPTDetector is created
+        this.init();
     }
 
-    const observer = new MutationObserver(() => {
-        const el = document.querySelector(selector);
-        if (el) {
-            observer.disconnect();
-            callback(el);
-        }
-    });
+    init() {
+        // this sends a message to the background with payload "GET_IDENTIFIERS"
+        // it gets response in return
+        chrome.runtime.sendMessage({ type: "GET_IDENTIFIERS" }, (response) => {
+            // safety precaution incase there is no response, cancel early
+            if (chrome.runtime.lastError) {
+                console.error("[AI Usage Meter] Error getting identifiers:", chrome.runtime.lastError);
+                return;
+            }
+            // this destructures the variables out of response
+            //  '|| {}' means if there is no response fallback to empty object
+            const {
+                user_id: userId,
+                session_id: sessionId,
+                session_start: sessionStart,
+                session_prompt_count: sessionPromptCount,
+                time_since_last_prompt: timeSinceLastPrompt,
+                extension_version: extensionVersion
+            } = response || {};
 
-    observer.observe(document.body, { childList: true, subtree: true });
-}
+            // populate the null properties from the constructor
+            // with Object.assign we avoid writing 6 lines of this.userid = userid etc etc.
+            // Object.assign(TARGET, SOURCE1, SOURCE2, etc)
+            Object.assign(this, {
+                userId, sessionId, sessionStart, sessionPromptCount,
+                timeSinceLastPrompt, extensionVersion
+            });
 
-// --- ChatGPT detector ------------------------------------------------------
-function detectChatGPT(onPrompt) {
-    console.log("[AI Usage Meter] ChatGPT detector active on", location.hostname);
-
-    // ChatGPT now uses a ProseMirror contenteditable div with id="prompt-textarea"
-    waitForElement("#prompt-textarea", editor => {
-        console.log("[AI Usage Meter] ChatGPT editor found:", editor);
-
-        // Messages live under <main> (more stable than old data-testid selectors)
-        waitForElement("main", chatContainer => {
-            console.log("[AI Usage Meter] ChatGPT chat container found:", chatContainer);
-
-            setupChatGPTListeners(editor, chatContainer, onPrompt);
+            console.log("[AI Usage Meter] Initialized with user:", this.userId);
+            // if all went well, start detecting
+            this.startDetection();
         });
-    });
-}
+    }
 
-// --- Main logic once editor + chat container exist -------------------------
-function setupChatGPTListeners(editor, chatContainer, onPrompt) {
-    const sendButton = document.querySelector('[data-testid="send-button"]');
-    console.log("[AI Usage Meter] Send button:", sendButton);
+    // this waits 30 seconds for an element to appear in the DOM == "Polling"
+    // reusable for whatever element
+    waitForElement(selector, timeout = 30000) {
+        // resolve and reject are needed to handle a promise, can't use a normal return
+        return new Promise((resolve, reject) => {
+            const start = Date.now();
+            // The actual polling function
+            const check = () => { 
+                // Look for the element
+                const element = document.querySelector(selector);
+                // if it is found, resolve the promise and return the element
+                if (element) {
+                    resolve(element);
+                    return;
+                }
+                // if 30 seconds have passed, fails
+                if (Date.now() - start > timeout) {
+                    reject(new Error(`Element ${selector} not found within ${timeout}ms`));
+                    return;
+                }
+                // Nothing was found, but try again in 100ms
+                setTimeout(check, 100);
+            };
+            // call the polling function
+            check();
+        });
+    }
 
-    function handleSubmit() {
-        const text = editor.innerText.trim();
+    async startDetection() {
+        // try catch because finding elements can fail
+        try {
+            console.log("[AI Usage Meter] Starting detection on", location.hostname);
+
+            // first wait for the critical elements
+            const editor = await this.waitForElement("#prompt-textarea");
+            const chatContainer = await this.waitForElement("main");
+
+            // if the elements were found, set up the listeners on said elements 
+            console.log("[AI Usage Meter] Editor and container found");
+            this.setupListeners(editor, chatContainer);
+
+        } catch (error) {
+            console.error("[AI Usage Meter] Detection setup failed:", error);
+        }
+    }
+
+    setupListeners(editor, chatContainer) {
+        // a wrapper is needed because this function must be called by an eventlistener
+        // without the wrapper, an event object would be added to the parameters, breaking the function
+        // it also needs to be an arrow function to preserve the THIS context
+        const handleSubmit = () => this.handleSubmit(editor, chatContainer);
+
+        // Enter-to-send
+        document.addEventListener("keydown", (e) => {
+            // this tracks if the user is typing in the chatGPT textarea, not somewhere else
+            if (e.target.closest("#prompt-textarea") &&
+            // and presses enter without shift
+                e.key === "Enter" && !e.shiftKey) {
+            // if so, call handlesubmit
+                handleSubmit();
+            }
+            // true here (useCapture: true) gives high priorty to our event, making it fire before chatGPT can do anything
+        }, true);
+
+        // Send button
+        const sendButton = document.querySelector('[data-testid="send-button"]');
+        if (sendButton) {
+            sendButton.addEventListener("click", handleSubmit);
+        }
+        // watch for these buttons/prompts
+        this.trackRegenerate();
+        this.trackSuggestedPrompts();
+    }
+
+    trackRegenerate() {
+        // a MutationObserver watches for DOM changes
+        const observer = new MutationObserver(() => {
+            // try three options to find the button
+            const regenerateButton = document.querySelector('[data-testid="regenerate"]') ||
+                document.querySelector('[data-string-id="regenerate"]') ||
+                document.querySelector('button[aria-label*="regenerate"]');
+
+            // if it found a button, and it is new (the '!' means false == it wasn't being tracked yet)
+            if (regenerateButton && !regenerateButton.dataset.tracked) {
+                // now it is being tracked
+                regenerateButton.dataset.tracked = 'true';
+                regenerateButton.addEventListener('click', () => {
+                    // set the variable to true for 5 seconds
+                    this.lastRegenerateUsed = true;
+                    console.log("[AI Usage Meter] Regenerate used");
+                    setTimeout(() => {
+                        this.lastRegenerateUsed = false;
+                    }, 5000);
+                    // a one time eventlistener
+                }, { once: true });
+            }
+        });
+        // this means the observer is watching everything
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    trackSuggestedPrompts() {
+        // watching the DOM constantly, not just once
+        const observer = new MutationObserver(() => {
+            const suggestButtons = document.querySelectorAll(
+                '[data-testid="accept-prompt"], ' +
+                'button[data-string-id*="optimize"], ' +
+                'button[aria-label*="suggestion"], ' +
+                'button[aria-label*="Suggested"]'
+            );
+            // loops over any button that might have been found
+            for (const button of suggestButtons) {
+                if (!button.dataset.tracked) {
+                    // does basically the same thing as track regenerate does
+                    button.dataset.tracked = 'true';
+                    button.addEventListener('click', () => {
+                        this.lastSuggestedPromptUsed = true;
+                        console.log("[AI Usage Meter] Suggested prompt used");
+                        setTimeout(() => {
+                            this.lastSuggestedPromptUsed = false;
+                        }, 5000);
+                    }, { once: true });
+                }
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+    // estimates the number of tokens based on text length
+    estimateTokens(text) {
+        if (!text || typeof text !== 'string') return 0;
+
+        const charCount = text.length;
+        const avgCharsPerToken = 3.8; // Empirical average from OpenAI tokenizer
+        const estimatedTokens = Math.ceil(charCount / avgCharsPerToken);
+
+        return Math.max(1, Math.min(estimatedTokens, 100000));
+    }
+
+    async handleSubmit(editor, chatContainer) {
+        // the '?' prevents a crash incase it returns null or undefined
+        const text = editor.innerText?.trim();
         if (!text) return;
 
-        console.log("[AI Usage Meter] handleSubmit, text:", text);
+        console.log("[AI Usage Meter] Processing prompt");
 
-        const model = getChatGPTModel();
-        const tokensIn = estimateTokens(text);
-        const conversationId = getConversationId();
+        // Pre-calculate all metrics
+        const model = this.getChatGPTModel();
+        const tokensIn = this.estimateTokens(text);
+        const conversationId = this.getConversationId();
         const promptStartTime = performance.now();
 
-        const modelMode = detectModelMode();
-
-        const promptType = classifyPrompt(text);
-        const promptLanguage = detectLanguage(text);
-        const promptDomain = detectDomain(text);
-        const safetyCategory = classifySafety(text);
-
-        const messageIndex = getUserMessageIndex();
-        const conversationLength = getConversationLength();
-        const isFollowup = detectFollowup(text);
-
-        // Session metrics (based on globals populated from GET_IDENTIFIERS)
-        const sessionDurationMs = Date.now() - SESSION_START;
+        const modelMode = this.detectModelMode();
+        const promptType = this.classifyPrompt(text);
+        const promptLanguage = this.detectLanguage(text);
+        const promptDomain = this.detectDomain(text);
+        const safetyCategory = this.classifySafety(text);
+        const messageIndex = this.getUserMessageIndex();
+        const conversationLength = this.getConversationLength();
+        const isFollowup = this.detectFollowup(text);
 
         const sessionMetrics = {
-            session_id: SESSION_ID,
-            session_start: new Date(SESSION_START).toISOString(),
-            session_prompt_count: SESSION_PROMPT_COUNT,
-            session_duration_ms: sessionDurationMs,
-            time_since_last_prompt_ms: TIME_SINCE_LAST_PROMPT
+            session_id: this.sessionId,
+            session_start: new Date(this.sessionStart).toISOString(),
+            session_prompt_count: this.sessionPromptCount,
+            session_duration_ms: Date.now() - this.sessionStart,
+            time_since_last_prompt_ms: this.timeSinceLastPrompt
         };
 
         const uiSignals = {
-            regenerate_used: lastRegenerateUsed || false,
-            suggested_prompt_used: lastSuggestedPromptUsed || false,
-            image_attached: hasImageAttachment(),
-            file_attached: hasFileAttachment(),
-            voice_input: isVoiceInputActive(),
-            tool_active: isToolActive()
+            regenerate_used: this.lastRegenerateUsed,
+            suggested_prompt_used: this.lastSuggestedPromptUsed,
+            image_attached: this.hasImageAttachment(),
+            file_attached: this.hasFileAttachment(),
+            voice_input: this.isVoiceInputActive(),
+            tool_active: this.isToolActive()
         };
 
-        const env = getClientEnvironment();
-        env.extension_version = EXTENSION_VERSION;
+        // Reset flags BEFORE tracking response
+        this.lastRegenerateUsed = false;
+        this.lastSuggestedPromptUsed = false;
 
-        // Reset one-time flags
-        lastSuggestedPromptUsed = false;
-        lastRegenerateUsed = false;
+        // Track response completion
+        // response and streamingDurationMS are returned from trackResponse
+        // trackResponse fires first, going into the text observing loop
+        // only when it is finished does it go on to creating the const event
+        // this ensures we have the full response before proceeding
+        this.trackResponse(chatContainer, promptStartTime, (response, streamingDurationMs) => {
+            const event = {
+                schema_version: this.schemaVersion,
+                timestamp: new Date().toISOString(),
+                user: { user_id: this.userId },
+                session: sessionMetrics,
+                prompt: {
+                    text_length: text.length,
+                    tokens_in: tokensIn,
+                    prompt_type: promptType,
+                    domain: promptDomain,
+                    language: promptLanguage,
+                    is_followup: isFollowup,
+                    message_index: messageIndex,
+                    conversation_length: conversationLength,
+                    safety_category: safetyCategory,
+                    timestamp: new Date().toISOString()
+                },
+                response: {
+                    tokens_out: this.estimateTokens(response),
+                    characters_out: response.length,
+                    latency_ms: performance.now() - promptStartTime,
+                    streaming_duration_ms: streamingDurationMs
+                },
+                model: { model_name: model, model_mode: modelMode },
+                ui_interaction: uiSignals,
+                environment: this.getClientEnvironment(),
+                source: "chatgpt",
+                conversation_id: conversationId
+            };
 
+            chrome.runtime.sendMessage({
+                type: "PROMPT_EVENT",
+                payload: event
+            }, (response) => {
+                if (chrome.runtime.lastError) {
+                    console.error("[AI Usage Meter] Failed to send event:", chrome.runtime.lastError);
+                } else {
+                    console.log("[AI Usage Meter] Event sent successfully");
+                }
+            });
+        });
+    }
+    // chatContainer is still the original we measured back in the original setup
+    trackResponse(chatContainer, promptStartTime, callback) {
+        let endTimer = null;
+        // previous response text
+        let lastContent = "";
+        // A DOM watcher
         const observer = new MutationObserver(() => {
-            const response = getLastAssistantMessage();
+            // This fires every time chatGPT adds text to response
+            const response = this.getLastAssistantMessage();
+            // ignores junk messages
             if (!response || response.length < 3) return;
 
-            const tokensOut = estimateTokens(response);
-            const latencyMs = performance.now() - promptStartTime;
-
-            trackStreamingDuration(chatContainer, (streamingDurationMs) => {
-                const event = {
-                    schema_version: 1,
-                    timestamp: new Date().toISOString(),
-
-                    user: {
-                        user_id: USER_ID
-                    },
-
-                    session: sessionMetrics,
-
-                    prompt: {
-                        text_length: text.length,
-                        tokens_in: tokensIn,
-                        prompt_type: promptType,
-                        domain: promptDomain,
-                        language: promptLanguage,
-                        is_followup: isFollowup,
-                        message_index: messageIndex,
-                        conversation_length: conversationLength,
-                        safety_category: safetyCategory
-                    },
-
-                    response: {
-                        tokens_out: tokensOut,
-                        characters_out: response.length,
-                        latency_ms: latencyMs,
-                        streaming_duration_ms: streamingDurationMs
-                    },
-
-                    model: {
-                        model_name: model,
-                        model_mode: modelMode
-                    },
-
-                    ui_interaction: {
-                        regenerate_used: uiSignals.regenerate_used,
-                        suggested_prompt_used: uiSignals.suggested_prompt_used,
-                        image_attached: uiSignals.image_attached,
-                        file_attached: uiSignals.file_attached,
-                        voice_input: uiSignals.voice_input,
-                        tool_active: uiSignals.tool_active
-                    },
-
-                    environment: {
-                        browser_name: env.browser_name,
-                        browser_version: env.browser_version,
-                        os: env.os,
-                        viewport_category: env.viewport_category,
-                        timezone_offset_minutes: env.timezone_offset_minutes,
-                        extension_version: env.extension_version
-                    },
-
-                    // keep your existing top-level fields that backend might rely on
-                    source: "chatgpt",
-                    conversation_id: conversationId
-                };
-
-                onPrompt(event);
-            });
-
-            observer.disconnect();
+            // this fires if new text has appeared
+            if (response !== lastContent) {
+                lastContent = response;
+                // and then removes it's own timeout
+                if (endTimer) {
+                    clearTimeout(endTimer);
+                }
+                // and creates a new one
+                endTimer = setTimeout(() => {
+                    // this will fire if 300ms were allowed to pass
+                    observer.disconnect();
+                    const streamingDurationMs = performance.now() - promptStartTime;
+                    // and sends the completed response, plus the time elapsed to the callback
+                    callback(response, streamingDurationMs);
+                }, 300);
+            }
         });
 
         observer.observe(chatContainer, { childList: true, subtree: true });
     }
 
-    // Enter-to-send inside the ProseMirror editor
-    document.addEventListener("keydown", e => {
-        if (!e.target.closest("#prompt-textarea")) return;
-        if (e.key === "Enter" && !e.shiftKey) {
-            // Let ChatGPT handle the actual send, we just observe
-            handleSubmit();
+    // ALL HELPER METHODS - COMPLETE IMPLEMENTATION
+
+    getLastAssistantMessage() {
+        const selectors = [
+            '[data-message-author-role="assistant"]:last-child [data-message-preview]',
+            '[data-message-author-role="assistant"]:last-child',
+            '.text-base:last-child',
+            '[class*="assistant"]:last-child'
+        ];
+        // this tries every selector written above, to look for the last message written by chatGPT
+        for (const selector of selectors) {
+            const elements = document.querySelectorAll(selector);
+            if (elements.length > 0) {
+                // grabs the last element in the NodeList, and tries to read its text content
+                const last = elements[elements.length - 1];
+                return last.innerText?.trim() || last.textContent?.trim() || '';
+            }
         }
-    });
-
-    // Click on send button
-    if (sendButton) {
-        sendButton.addEventListener("click", handleSubmit);
-    }
-}
-
-
-
-// --- Helpers ---------------------------------------------------------------
-function getChatGPTModel() {
-    // 1. Try the main model switcher button
-    const btn = document.querySelector('[data-testid="model-switcher-dropdown-button"]');
-    if (btn) {
-        const raw = btn.innerText.trim();
-        const cleaned = normalizeModelName(raw);
-        if (cleaned) return cleaned;
+        // if all fails, return an empty string
+        return '';
     }
 
-    // 2. Try the dropdown menu (if open)
-    const menuItems = [...document.querySelectorAll('[data-testid="model-switcher-dropdown"] *')];
-    for (const item of menuItems) {
-        const cleaned = normalizeModelName(item.innerText.trim());
-        if (cleaned) return cleaned;
-    }
+    getChatGPTModel() {
+        const selectors = [
+            '[data-testid="model-switcher-dropdown-button"]',
+            '[data-testid="model-switcher-dropdown"] *'
+        ];
 
-    // 3. Fallback: scan the whole page for known model names
-    const knownModels = [
-        "gpt-4o", "gpt-4o mini", "gpt-4", "gpt-3.5",
-        "o1", "o1-mini", "o3", "o3-mini"
-    ];
-
-    const allText = [...document.querySelectorAll("*")]
-        .map(e => e.innerText)
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-    for (const model of knownModels) {
-        if (allText.includes(model)) return model;
-    }
-
-    return "unknown";
-}
-
-function normalizeModelName(text) {
-    if (!text) return null;
-
-    const lower = text.toLowerCase();
-
-    // Normalize common variants
-    if (lower.includes("gpt-4o mini") || lower.includes("4o mini")) return "gpt-4o-mini";
-    if (lower.includes("gpt-4o") || lower.includes("4o")) return "gpt-4o";
-    if (lower.includes("gpt-4")) return "gpt-4";
-    if (lower.includes("gpt-3.5")) return "gpt-3.5";
-
-    // OpenAI "o" models
-    if (lower.includes("o1-mini")) return "o1-mini";
-    if (lower.includes("o1")) return "o1";
-    if (lower.includes("o3-mini")) return "o3-mini";
-    if (lower.includes("o3")) return "o3";
-
-    // Sometimes the UI shows "Default (GPT‑4o)"
-    const match = lower.match(/gpt[- ]?\d+(\.\d+)?[a-z\-]*/);
-    if (match) return match[0];
-
-    return null;
-}
-
-function detectModelMode() {
-    // Vision
-    if (document.querySelector('[data-testid="image-input"]') ||
-        document.querySelector('#prompt-textarea img')) {
-        return "vision";
-    }
-
-    // File uploads
-    if (document.querySelector('[data-testid="file-input"]') ||
-        document.querySelector('[data-testid="attachment"]')) {
-        return "file";
-    }
-
-    // Voice
-    const mic = document.querySelector('[data-testid="microphone-button"]');
-    if (mic && mic.getAttribute("data-state") === "recording") {
-        return "voice";
-    }
-
-    // Tools / Code Interpreter
-    if (document.querySelector('[data-testid="tool-badge"]') ||
-        document.querySelector('[data-testid="tool-output"]')) {
-        return "tools";
-    }
-
-    // Browsing
-    if (document.querySelector('[data-testid="web-browsing-indicator"]') ||
-        document.body.innerText.toLowerCase().includes("browsing with bing")) {
-        return "browsing";
-    }
-
-    // Default
-    return "text";
-}
-
-function estimateTokens(text) {
-    if (!text) return 0;
-    const words = text.trim().split(/\s+/).length;
-    return Math.round(words * 1.3);
-}
-
-function getLastAssistantMessage() {
-    const msgs = document.querySelectorAll('[data-message-author-role="assistant"]');
-    if (!msgs.length) return null;
-    return msgs[msgs.length - 1].innerText.trim();
-}
-
-function getConversationId() {
-    // 1. Check meta tag (most reliable)
-    const meta = document.querySelector('meta[name="oai-conversation-id"]');
-    if (meta?.content) return meta.content;
-
-    // 2. Check Next.js global data
-    try {
-        const next = window.__NEXT_DATA__;
-        const id = next?.props?.pageProps?.conversationId;
-        if (id) return id;
-    } catch (e) { }
-
-    // 3. Fallback: old URL format
-    const match = location.pathname.match(/\/c\/([a-z0-9-]+)/i);
-    if (match) return match[1];
-
-    return null;
-}
-
-function classifyPrompt(text) {
-    const lower = text.toLowerCase().trim();
-
-    // Code detection
-    if (lower.includes("```") || /function\s+\w+\(/.test(lower) || /<[^>]+>/.test(lower)) {
-        return "code";
-    }
-
-    // Rewrite / editing
-    if (lower.startsWith("rewrite") ||
-        lower.startsWith("improve") ||
-        lower.startsWith("fix") ||
-        lower.includes("make this") ||
-        lower.includes("correct this") ||
-        lower.includes("shorten this") ||
-        lower.includes("edit this")) {
-        return "rewrite";
-    }
-
-    // Question
-    if (lower.endsWith("?") || lower.startsWith("why ") || lower.startsWith("how ")) {
-        return "question";
-    }
-
-    // Instruction (imperative)
-    const imperativeVerbs = [
-        "write", "explain", "summarize", "generate", "create",
-        "list", "compare", "analyze", "translate", "draft"
-    ];
-    if (imperativeVerbs.some(v => lower.startsWith(v + " "))) {
-        return "instruction";
-    }
-
-    // Creative
-    const creativeWords = ["story", "poem", "imagine", "roleplay", "character", "scene"];
-    if (creativeWords.some(w => lower.includes(w))) {
-        return "creative";
-    }
-
-    // Default
-    return "chat";
-}
-
-function classifySafety(text) {
-    const lower = text.toLowerCase();
-
-    const medical = ["symptom", "treat", "diagnose", "medicine", "health", "pain", "disease"];
-    const legal = ["law", "legal", "sue", "contract", "liability", "court"];
-    const harmful = ["kill", "weapon", "harm", "explode", "poison", "self-harm"];
-    const political = ["election", "vote", "candidate", "campaign", "politics"];
-    const misinformation = ["flat earth", "chemtrails", "hoax", "fake news"];
-
-    if (medical.some(w => lower.includes(w))) return "medical";
-    if (legal.some(w => lower.includes(w))) return "legal";
-    if (harmful.some(w => lower.includes(w))) return "harmful";
-    if (political.some(w => lower.includes(w))) return "political";
-    if (misinformation.some(w => lower.includes(w))) return "misinformation";
-
-    return null; // no safety category
-}
-
-function detectDomain(text) {
-    const lower = text.toLowerCase();
-
-    const domains = [
-        { name: "coding", keywords: ["code", "javascript", "python", "function", "bug", "api", "html", "css"] },
-        { name: "math", keywords: ["calculate", "equation", "solve", "integral", "derivative", "probability"] },
-        { name: "science", keywords: ["physics", "chemistry", "biology", "experiment", "scientific"] },
-        { name: "business", keywords: ["marketing", "strategy", "startup", "business", "roi", "sales"] },
-        { name: "creative_writing", keywords: ["story", "poem", "novel", "character", "plot"] },
-        { name: "education", keywords: ["explain like", "homework", "study", "lesson", "teacher"] },
-        { name: "productivity", keywords: ["plan", "organize", "schedule", "task", "workflow"] },
-        { name: "translation", keywords: ["translate", "in english", "in italian", "traduci"] },
-        { name: "data_analysis", keywords: ["dataset", "data", "statistics", "chart", "visualize"] },
-        { name: "design", keywords: ["ux", "ui", "design", "layout", "wireframe"] }
-    ];
-
-    for (const domain of domains) {
-        if (domain.keywords.some(k => lower.includes(k))) {
-            return domain.name;
-        }
-    }
-
-    return "general";
-}
-
-function detectLanguage(text) {
-    const lower = text.toLowerCase();
-
-    // Quick checks for scripts
-    if (/[а-яё]/.test(lower)) return "ru";
-    if (/[α-ω]/.test(lower)) return "el";
-    if (/[\u4e00-\u9fff]/.test(lower)) return "zh";
-    if (/[\u3040-\u309f\u30a0-\u30ff]/.test(lower)) return "ja";
-    if (/[\uac00-\ud7af]/.test(lower)) return "ko";
-
-    // Latin-based languages
-    const languages = [
-        { code: "en", words: ["the", "and", "you", "what", "how", "why", "I'm", 'my'] },
-        { code: "it", words: ["che", "come", "perché", "questo", "quello", "ciao"] },
-        { code: "es", words: ["que", "como", "hola", "porque", "esto"] },
-        { code: "fr", words: ["que", "quoi", "bonjour", "pourquoi", "comment"] },
-        { code: "de", words: ["und", "was", "wie", "warum", "hallo"] },
-        { code: "nl", words: ["wat", "hoe", "waarom", "hallo", "dit", "dat"] }
-    ];
-
-    for (const lang of languages) {
-        if (lang.words.some(w => lower.includes(w))) {
-            return lang.code;
-        }
-    }
-
-    // Fallback
-    return "unknown";
-}
-
-function trackStreamingDuration(chatContainer, callback) {
-    let startTime = null;
-    let endTimer = null;
-    let lastContent = "";
-
-    const observer = new MutationObserver(() => {
-        const msgs = document.querySelectorAll('[data-message-author-role="assistant"]');
-        if (!msgs.length) return;
-
-        const lastMsg = msgs[msgs.length - 1];
-        const content = lastMsg.innerText;
-
-        // Streaming start
-        if (!startTime && content.length > 0) {
-            startTime = performance.now();
+        for (const selector of selectors) {
+            // loop through all the selectors looking for where the model name is stored
+            const elements = document.querySelectorAll(selector);
+            for (const el of elements) {
+                // trim the whitespace
+                const cleaned = this.normalizeModelName(el.innerText?.trim());
+                // if it existed, return it
+                if (cleaned) return cleaned;
+            }
         }
 
-        // Detect end of streaming: content stops changing
-        if (content !== lastContent) {
-            lastContent = content;
-
-            if (endTimer) clearTimeout(endTimer);
-
-            endTimer = setTimeout(() => {
-                const endTime = performance.now();
-                const duration = endTime - startTime;
-
-                observer.disconnect();
-                callback(duration);
-            }, 200); // 200ms of no changes = finished
+        const knownModels = ["gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-3.5-turbo", "o1", "o1-mini"];
+        const pageText = document.body.innerText.toLowerCase();
+        // this is a less refined way of finding the model name, incase attempt one failed
+        // scan all the text on the page looking for a model name
+        // return it if it matches anything in knownModels
+        for (const model of knownModels) {
+            if (pageText.includes(model)) return model;
         }
-    });
-
-    observer.observe(chatContainer, { childList: true, subtree: true });
-}
-
-function getUserMessageIndex() {
-    const msgs = document.querySelectorAll('[data-message-author-role="user"]');
-    return msgs.length; // 1-based index
-}
-
-function getConversationLength() {
-    const msgs = document.querySelectorAll('[data-message-author-role]');
-    return msgs.length;
-}
-
-function detectFollowup(text) {
-    const lower = text.toLowerCase().trim();
-
-    const followupWords = [
-        "continue", "go on", "more", "explain more", "expand",
-        "as before", "as above", "same style", "same format",
-        "rewrite that", "improve that", "fix that", "continue the story"
-    ];
-
-    if (followupWords.some(w => lower.startsWith(w))) return true;
-
-    // If the conversation already has multiple turns, many short prompts are follow-ups
-    if (getUserMessageIndex() > 1 && lower.split(/\s+/).length <= 4) {
-        return true;
+        // otherwise return nothing
+        return "unknown";
     }
+    // helper to normalize a model name
+    normalizeModelName(text) {
+        if (!text) return null;
+        // in lowercase to normalize any possible case
+        const lower = text.toLowerCase();
 
-    return false;
-}
-
-
-function detectRegenerateClick(callback) {
-    const btn = document.querySelector('[data-testid="regenerate-button"]');
-    if (!btn) return;
-
-    btn.addEventListener("click", () => {
-        callback(true);
-    });
-}
-
-
-function trackSuggestedPrompts() {
-    const suggestions = document.querySelectorAll('[data-testid="prompt-suggestion"]');
-    suggestions.forEach(el => {
-        el.addEventListener("click", () => {
-            lastSuggestedPromptUsed = true;
-        });
-    });
-}
-
-function hasImageAttachment() {
-    return !!document.querySelector('[data-testid="image-input"]') ||
-        !!document.querySelector('#prompt-textarea img');
-}
-
-function hasFileAttachment() {
-    return !!document.querySelector('[data-testid="file-input"]') ||
-        !!document.querySelector('[data-testid="attachment"]');
-}
-
-function isVoiceInputActive() {
-    const mic = document.querySelector('[data-testid="microphone-button"]');
-    return mic && mic.getAttribute("data-state") === "recording";
-}
-
-function isToolActive() {
-    return !!document.querySelector('[data-testid="tool-badge"]') ||
-        !!document.querySelector('[data-testid="tool-output"]');
-}
-
-function getClientEnvironment() {
-    const ua = navigator.userAgent.toLowerCase();
-
-    let browser = "unknown";
-    if (ua.includes("chrome") && !ua.includes("edge") && !ua.includes("brave")) browser = "chrome";
-    if (ua.includes("edg")) browser = "edge";
-    if (ua.includes("brave")) browser = "brave";
-    if (ua.includes("firefox")) browser = "firefox";
-    if (ua.includes("safari") && !ua.includes("chrome")) browser = "safari";
-
-    const browserVersionMatch = ua.match(/(chrome|firefox|edg|safari)\/(\d+)/);
-    const browserVersion = browserVersionMatch ? browserVersionMatch[2] : "unknown";
-
-    let os = "unknown";
-    if (ua.includes("win")) os = "windows";
-    if (ua.includes("mac")) os = "macos";
-    if (ua.includes("linux")) os = "linux";
-
-    const width = window.innerWidth;
-    const viewport =
-        width < 600 ? "mobile" :
-            width < 1024 ? "tablet" :
-                "desktop";
-
-    const timezoneOffset = new Date().getTimezoneOffset();
-
-    return {
-        browser_name: browser,
-        browser_version: browserVersion,
-        os,
-        viewport_category: viewport,
-        timezone_offset_minutes: timezoneOffset
-    };
-}
-
-// ================== Global detector registry ================================
-window.AIUsageDetectors = {
-    detectChatGPT,
-};
-
-// ================== Init detectors =========================================
-
-
-let USER_ID = null;
-let SESSION_ID = null;
-
-function initDetectors() {
-    chrome.runtime.sendMessage({ type: "GET_IDENTIFIERS" }, response => {
-        USER_ID = response.user_id;
-        SESSION_ID = response.session_id;
-
-        console.log("[AI Usage Meter] User ID:", USER_ID);
-        console.log("[AI Usage Meter] Session ID:", SESSION_ID);
-
-        const onPrompt = (payload) => {
-            payload.user_id = USER_ID;
-            payload.session_id = SESSION_ID;
-
-            chrome.runtime.sendMessage({
-                type: "PROMPT_EVENT",
-                payload
-            });
+        const patterns = {
+            "gpt-4o mini": "gpt-4o-mini",
+            "gpt-4o": "gpt-4o",
+            "gpt-4": "gpt-4",
+            "gpt-3.5": "gpt-3.5-turbo",
+            "o1-mini": "o1-mini",
+            "o1": "o1"
         };
+        // this is like dict comprehensions
+        // Object.entries(patterns) returns the key-value pairs of patterns
+        // [pattern, normalized] unpacks the key-value pair into pattern and normalized
+        // so it checks for each key if it is in the text, and if so, returns its value
+        for (const [pattern, normalized] of Object.entries(patterns)) {
+            if (lower.includes(pattern)) return normalized;
+        }
+        // returns nothing if fails
+        return null;
+    }
+    // looks at the url to decide what mode the model is in
+    detectModelMode() {
+        const url = location.pathname;
+        if (url.includes('/code')) return 'code-interpreter';
+        if (url.includes('/chat')) return 'chat';
+        return 'standard';
+    }
 
-        const { detectChatGPT } = window.AIUsageDetectors;
-        detectChatGPT(onPrompt);
-    });
+    // analyzes the prompt to determine how to classify it
+    // can be expanded much more
+    classifyPrompt(text) {
+        const lower = text.toLowerCase();
+        if (lower.includes('write') || lower.includes('code') || lower.includes('script')) return 'creative-writing';
+        if (lower.includes('explain') || lower.includes('what is')) return 'explanation';
+        if (lower.includes('summarize') || lower.includes('tl;dr')) return 'summarization';
+        if (lower.match(/\d+\s*(usd|dollar|€|euro)/i)) return 'pricing';
+        return 'general';
+    }
+
+    // simple map to determine what language the prompt was written in
+    // can be expanded much more
+    detectLanguage(text) {
+        const langMap = {
+            en: /hello|please|thank/i,
+            es: /hola|por favor|gracias/i,
+            fr: /bonjour|s\'il vous plaît|merci/i,
+            de: /hallo|bitte|danke/i,
+            it: /ciao|per favore|grazie/i
+        };
+        
+        for (const [lang, regex] of Object.entries(langMap)) {
+            if (regex.test(text)) return lang;
+        }
+        return 'en';
+    }
+
+    // analyze the text to determine in what domain it is
+    detectDomain(text) {
+        const lower = text.toLowerCase();
+        if (lower.includes('code') || lower.includes('javascript') || lower.includes('python')) return 'programming';
+        if (lower.includes('marketing') || lower.includes('seo')) return 'marketing';
+        if (lower.includes('finance') || lower.includes('$') || lower.includes('stock')) return 'finance';
+        if (lower.includes('health') || lower.includes('doctor')) return 'health';
+        return 'general';
+    }
+
+    // analyze the text to determine how to categorize it
+    classifySafety(text) {
+        const lower = text.toLowerCase();
+        if (lower.includes('hack') || lower.includes('crack') || lower.includes('phishing')) return 'high-risk';
+        if (lower.includes('nsfw') || lower.includes('adult') || lower.includes('sex')) return 'adult-content';
+        if (lower.includes('weapon') || lower.includes('bomb') || lower.includes('drug')) return 'illegal';
+        return 'safe';
+    }
+
+    // what number message in the current conversation
+    getUserMessageIndex() {
+        const userMessages = document.querySelectorAll('[data-message-author-role="user"]');
+        return userMessages.length;
+    }
+    // total length of conversation (user+AI)
+    getConversationLength() {
+        const allMessages = document.querySelectorAll('[data-message-author-role]');
+        return allMessages.length;
+    }
+    // detect if the question is a  follow up
+    // needs to be expanded upon
+    detectFollowup(text) {
+        return text.length < 50 || text.includes('this') || text.includes('it') || text.includes('above');
+    }
+    // a bunch of flags to ceck
+    hasImageAttachment() { 
+        return !!document.querySelector('[data-testid="image-upload"] img'); 
+    }
+    
+    hasFileAttachment() { 
+        return !!document.querySelector('[data-testid="file-upload"]'); 
+    }
+    
+    isVoiceInputActive() { 
+        return !!document.querySelector('[data-state="recording"]'); 
+    }
+    
+    isToolActive() { 
+        return !!document.querySelector('[data-mode="plugins"]'); 
+    }
+    // generate a conversationID
+    getConversationId() {
+        const urlParams = new URLSearchParams(location.search);
+        return urlParams.get('conversationId') || 'unknown';
+    }
+    // read some data on the clients environment
+    getClientEnvironment() {
+        return {
+            hostname: location.hostname,
+            pathname: location.pathname,
+            userAgent: navigator.userAgent.slice(0, 200),
+            language: navigator.language,
+            screen: `${screen.width}x${screen.height}`
+        };
+    }
 }
 
-if (document.readyState === "complete" || document.readyState === "interactive") {
-    initDetectors();
+// Initialize
+
+// if the document is still loading, add an event listener that will run
+// once loading is finished
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => new ChatGPTDetector());
+    // or else just create the class immediately
 } else {
-    window.addEventListener("DOMContentLoaded", initDetectors);
+    new ChatGPTDetector();
 }
-
-
-
