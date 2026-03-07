@@ -336,66 +336,157 @@ class ChatGPTDetector {
         // if all fails, return an empty string
         return '';
     }
-    /////model name is not working well
+    // /////model name is not working well
+    // getChatGPTModel() {
+    //     const selectors = [
+    //         '[data-testid="model-switcher-dropdown-button"]',
+    //         '[data-testid="model-switcher-dropdown"] *'
+    //     ];
+
+    //     for (const selector of selectors) {
+    //         // loop through all the selectors looking for where the model name is stored
+    //         const elements = document.querySelectorAll(selector);
+    //         for (const el of elements) {
+    //             // trim the whitespace
+    //             const cleaned = this.normalizeModelName(el.innerText?.trim());
+    //             // if it existed, return it
+    //             if (cleaned) return cleaned;
+    //         }
+    //     }
+
+    //     const knownModels = ["gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-3.5-turbo", "o1", "o1-mini"];
+    //     const pageText = document.body.innerText.toLowerCase();
+    //     // this is a less refined way of finding the model name, incase attempt one failed
+    //     // scan all the text on the page looking for a model name
+    //     // return it if it matches anything in knownModels
+    //     for (const model of knownModels) {
+    //         if (pageText.includes(model)) return model;
+    //     }
+    //     // otherwise return nothing
+    //     return "unknown";
+    // }
+    // // helper to normalize a model name
+    // normalizeModelName(text) {
+    //     if (!text) return null;
+    //     // in lowercase to normalize any possible case
+    //     const lower = text.toLowerCase();
+
+    //     const patterns = {
+    //         "gpt-4o mini": "gpt-4o-mini",
+    //         "gpt-4o": "gpt-4o",
+    //         "gpt-4": "gpt-4",
+    //         "gpt-3.5": "gpt-3.5-turbo",
+    //         "o1-mini": "o1-mini",
+    //         "o1": "o1"
+    //     };
+    //     // this is like dict comprehensions
+    //     // Object.entries(patterns) returns the key-value pairs of patterns
+    //     // [pattern, normalized] unpacks the key-value pair into pattern and normalized
+    //     // so it checks for each key if it is in the text, and if so, returns its value
+    //     for (const [pattern, normalized] of Object.entries(patterns)) {
+    //         if (lower.includes(pattern)) return normalized;
+    //     }
+    //     // returns nothing if fails
+    //     return null;
+    // }
+    // // looks at the url to decide what mode the model is in
+    // detectModelMode() {
+    //     const url = location.pathname;
+    //     if (url.includes('/code')) return 'code-interpreter';
+    //     if (url.includes('/chat')) return 'chat';
+    //     return 'standard';
+    // }
+
     getChatGPTModel() {
+        // 1. Enhanced __NEXT_DATA__ parse (deeper props)
+        try {
+            if (window.__NEXT_DATA__) {
+                const data = window.__NEXT_DATA__.props?.pageProps;
+                const paths = ['model', 'initialModel', 'conversation.model', 'currentModel', 'activeModel'];
+                for (const path of paths) {
+                    let val = data;
+                    for (const key of path.split('.')) val = val?.[key];
+                    if (val) return this.normalizeModelName(val);
+                }
+            }
+        } catch (e) {
+            console.warn("Failed __NEXT_DATA__", e);
+        }
+
+        // 2. Expanded selectors (model button, dropdown items, active indicators)
         const selectors = [
             '[data-testid="model-switcher-dropdown-button"]',
-            '[data-testid="model-switcher-dropdown"] *'
+            '[data-testid^="model-switcher-"]',
+            '[data-testid="model-switcher-dropdown"] *',
+            '.model-selector-active',  // Common active class
+            '[aria-label*="model"], [title*="model"]'
         ];
-
         for (const selector of selectors) {
-            // loop through all the selectors looking for where the model name is stored
             const elements = document.querySelectorAll(selector);
             for (const el of elements) {
-                // trim the whitespace
-                const cleaned = this.normalizeModelName(el.innerText?.trim());
-                // if it existed, return it
+                const text = el.innerText?.trim() || el.title?.trim() || el.dataset.model;
+                const cleaned = this.normalizeModelName(text);
                 if (cleaned) return cleaned;
             }
         }
 
-        const knownModels = ["gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-3.5-turbo", "o1", "o1-mini"];
+        // 3. Updated known models + page scan fallback
+        const knownModels = ["gpt-5", "gpt-5.4", "gpt-5.2", "gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-3.5-turbo", "o1", "o1-mini", "gpt-5-thinking", "gpt-5-t-mini"];
         const pageText = document.body.innerText.toLowerCase();
-        // this is a less refined way of finding the model name, incase attempt one failed
-        // scan all the text on the page looking for a model name
-        // return it if it matches anything in knownModels
         for (const model of knownModels) {
-            if (pageText.includes(model)) return model;
+            if (pageText.includes(model.toLowerCase())) return model;
         }
-        // otherwise return nothing
+
         return "unknown";
     }
-    // helper to normalize a model name
+
     normalizeModelName(text) {
         if (!text) return null;
-        // in lowercase to normalize any possible case
-        const lower = text.toLowerCase();
-
+        const lower = text.toLowerCase().replace(/[^a-z0-9-]/g, '');
         const patterns = {
-            "gpt-4o mini": "gpt-4o-mini",
-            "gpt-4o": "gpt-4o",
-            "gpt-4": "gpt-4",
-            "gpt-3.5": "gpt-3.5-turbo",
-            "o1-mini": "o1-mini",
-            "o1": "o1"
+            "gpt5": "gpt-5",
+            "gpt54": "gpt-5.4",
+            "gpt52": "gpt-5.2",
+            "gpt4o": "gpt-4o",
+            "gpt4omini": "gpt-4o-mini",
+            "gpt4": "gpt-4",
+            "gpt35": "gpt-3.5-turbo",
+            "o1mini": "o1-mini",
+            "o1": "o1",
+            "gpt5thinking": "gpt-5-thinking",
+            "gpt5tmini": "gpt-5-t-mini"
         };
-        // this is like dict comprehensions
-        // Object.entries(patterns) returns the key-value pairs of patterns
-        // [pattern, normalized] unpacks the key-value pair into pattern and normalized
-        // so it checks for each key if it is in the text, and if so, returns its value
         for (const [pattern, normalized] of Object.entries(patterns)) {
             if (lower.includes(pattern)) return normalized;
         }
-        // returns nothing if fails
-        return null;
+        return lower.includes('gpt') ? lower : null;
     }
-    // looks at the url to decide what mode the model is in
+
+    // Polling watcher for post-send (call after detect send)
+    watchForModelUpdate(callback, timeout = 10000) {
+        const start = Date.now();
+        const interval = setInterval(() => {
+            const model = this.getChatGPTModel();
+            if (model !== "unknown") {
+                clearInterval(interval);
+                callback(model);
+                return;
+            }
+            if (Date.now() - start > timeout) {
+                clearInterval(interval);
+                callback("unknown");
+            }
+        }, 500);
+    }
+
+    // Usage: detect send (e.g., on button click/input), then watch
     detectModelMode() {
         const url = location.pathname;
         if (url.includes('/code')) return 'code-interpreter';
         if (url.includes('/chat')) return 'chat';
         return 'standard';
     }
+
 
     // analyzes the prompt to determine how to classify it
     // can be expanded much more
