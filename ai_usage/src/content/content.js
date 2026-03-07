@@ -59,7 +59,7 @@ class ChatGPTDetector {
         return new Promise((resolve, reject) => {
             const start = Date.now();
             // The actual polling function
-            const check = () => { 
+            const check = () => {
                 // Look for the element
                 const element = document.querySelector(selector);
                 // if it is found, resolve the promise and return the element
@@ -108,9 +108,9 @@ class ChatGPTDetector {
         document.addEventListener("keydown", (e) => {
             // this tracks if the user is typing in the chatGPT textarea, not somewhere else
             if (e.target.closest("#prompt-textarea") &&
-            // and presses enter without shift
+                // and presses enter without shift
                 e.key === "Enter" && !e.shiftKey) {
-            // if so, call handlesubmit
+                // if so, call handlesubmit
                 handleSubmit();
             }
             // true here (useCapture: true) gives high priorty to our event, making it fire before chatGPT can do anything
@@ -336,7 +336,7 @@ class ChatGPTDetector {
         // if all fails, return an empty string
         return '';
     }
-
+    /////model name is not working well
     getChatGPTModel() {
         const selectors = [
             '[data-testid="model-switcher-dropdown-button"]',
@@ -418,7 +418,7 @@ class ChatGPTDetector {
             de: /hallo|bitte|danke/i,
             it: /ciao|per favore|grazie/i
         };
-        
+
         for (const [lang, regex] of Object.entries(langMap)) {
             if (regex.test(text)) return lang;
         }
@@ -460,20 +460,20 @@ class ChatGPTDetector {
         return text.length < 50 || text.includes('this') || text.includes('it') || text.includes('above');
     }
     // a bunch of flags to ceck
-    hasImageAttachment() { 
-        return !!document.querySelector('[data-testid="image-upload"] img'); 
+    hasImageAttachment() {
+        return !!document.querySelector('[data-testid="image-upload"] img');
     }
-    
-    hasFileAttachment() { 
-        return !!document.querySelector('[data-testid="file-upload"]'); 
+
+    hasFileAttachment() {
+        return !!document.querySelector('[data-testid="file-upload"]');
     }
-    
-    isVoiceInputActive() { 
-        return !!document.querySelector('[data-state="recording"]'); 
+
+    isVoiceInputActive() {
+        return !!document.querySelector('[data-state="recording"]');
     }
-    
-    isToolActive() { 
-        return !!document.querySelector('[data-mode="plugins"]'); 
+
+    isToolActive() {
+        return !!document.querySelector('[data-mode="plugins"]');
     }
     // generate a conversationID
     getConversationId() {
@@ -482,12 +482,42 @@ class ChatGPTDetector {
     }
     // read some data on the clients environment
     getClientEnvironment() {
+        const ua = navigator.userAgent;
+        let browser = "unknown";
+        let version = 0;
+        let os = "unknown";
+
+        // Simple browser detection
+        if (ua.includes("Chrome")) {
+            browser = "Chrome";
+            const match = ua.match(/Chrome\/([\d]+)/);
+            if (match) version = parseInt(match[1]);
+        } else if (ua.includes("Firefox")) {
+            browser = "Firefox";
+            const match = ua.match(/Firefox\/([\d]+)/);
+            if (match) version = parseInt(match[1]);
+        } else if (ua.includes("Safari") && !ua.includes("Chrome")) {
+            browser = "Safari";
+            const match = ua.match(/Version\/([\d]+)/);
+            if (match) version = parseInt(match[1]);
+        }
+
+        // OS detection
+        if (ua.includes("Win")) os = "Windows";
+        else if (ua.includes("Mac")) os = "Mac";
+        else if (ua.includes("Linux")) os = "Linux";
+
+        // Viewport and timezone
+        const viewport = `${window.innerWidth}x${window.innerHeight}`;
+        const timezone = -new Date().getTimezoneOffset(); // convert to positive offset
+
         return {
-            hostname: location.hostname,
-            pathname: location.pathname,
-            userAgent: navigator.userAgent.slice(0, 200),
-            language: navigator.language,
-            screen: `${screen.width}x${screen.height}`
+            browser,
+            version,
+            os,
+            viewport,
+            timezone,
+            plugin_version: this.extensionVersion || "unknown"
         };
     }
 }
