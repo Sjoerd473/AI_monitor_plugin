@@ -3,7 +3,7 @@
 // =========================
 
 // global settings for session lifetime and ID lengths
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 min
+const SESSION_TIMEOUT = 10 * 60 * 1000; // 10 min
 const DEFAULT_SESSION_BYTES = 16;
 const DEFAULT_USER_BYTES = 32;
 const SECRET_KEY = "super_secret_key_here";
@@ -67,6 +67,12 @@ async function getOrCreateSessionId() {
     let sessionId = data.session_id;
     // expired will be true if there is no sessionId, or if 30 mins have passed
     const expired = !sessionId || (now - lastActive) > SESSION_TIMEOUT;
+    console.log(sessionId)
+    console.log(now)
+    console.log(lastActive)
+    console.log((now - lastActive) > SESSION_TIMEOUT)
+    console.log(expired)
+    console.log("finished")
 
     if (expired) {
         // so if more than 30 mins has passed, we create a new session
@@ -79,7 +85,10 @@ async function getOrCreateSessionId() {
         });
     } else {
         // we arrive here if the session exists, so we update the timestamp
-        await storageSet({ session_last_active: now });
+        await storageSet({
+            session_last_active: now,
+            session_prompt_count: 0
+        });
     }
     // and then return the sessionId in any case (a new one or an old one)
     return sessionId;
