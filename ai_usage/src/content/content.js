@@ -1,5 +1,10 @@
-// Modern AI Usage Meter – ChatGPT detector (ES6+ with working Chrome messaging)
-// COMPLETE WORKING VERSION
+const test = {
+    "test" : {
+        asdas: "asd"
+    }
+}
+
+/// to expand for other models, put the generic prompt parsing in a parent class, then the specific stuff in each individual  class 
 class ChatGPTDetector {
     constructor() {
         // initialized as null first
@@ -480,6 +485,7 @@ class ChatGPTDetector {
     }
 
     // Usage: detect send (e.g., on button click/input), then watch
+    //// I don't think this works, given that the url never contains code or chat
     detectModelMode() {
         const url = location.pathname;
         if (url.includes('/code')) return 'code-interpreter';
@@ -507,8 +513,10 @@ class ChatGPTDetector {
             es: /hola|por favor|gracias/i,
             fr: /bonjour|s\'il vous plaît|merci/i,
             de: /hallo|bitte|danke/i,
-            it: /ciao|per favore|grazie/i
+            it: /ciao|per favore|grazie/i,
         };
+        
+    
 
         for (const [lang, regex] of Object.entries(langMap)) {
             if (regex.test(text)) return lang;
@@ -550,7 +558,8 @@ class ChatGPTDetector {
     detectFollowup(text) {
         return text.length < 50 || text.includes('this') || text.includes('it') || text.includes('above');
     }
-    // a bunch of flags to ceck
+    // a bunch of flags to check
+    // !! ensures a proper boolean
     hasImageAttachment() {
         return !!document.querySelector('[data-testid="image-upload"] img');
     }

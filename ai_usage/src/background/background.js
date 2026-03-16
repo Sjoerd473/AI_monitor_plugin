@@ -164,6 +164,7 @@ async function computeHMAC(payloadString, key = SECRET_KEY) {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // so we use an IIFE (Immediately Invoked Function Expression) (async () => {...}) ()
     (async () => {
+        // a switch statement, a different way to do if elif. In this example it looks at the msg.type
         switch (msg.type) {
             // this is called by the init(), so at the start of a session
             case "GET_IDENTIFIERS": {
