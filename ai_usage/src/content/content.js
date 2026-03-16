@@ -1,8 +1,27 @@
-const test = {
-    "test" : {
-        asdas: "asd"
+
+const categorie_keywords = {
+    Marketing: {
+        "it": ["Mercato", "Prodotto", "Prezzo", "Promozione", "Strategico", "Aziendale"],
+        "en": ["Target", "Branding", "Social Media", "Market", "Internet"]
+    },
+    Finance: {
+        "it": ["Analisi", "Economia", "Azioni", "Obbligazioni", "Derivati", "Portafoglio", "Tassi", "Liquidità", "Rischio", "Rendimento"],
+        "en": ["Trading", "Rating", "Cash Flow"]
+    },
+    Health: {
+        "it": ["Salute", "Benessere", "Buona Salute", "Condizioni", "Sanità", "Educazione sanitaria"],
+        "en": ["Well-being", "Healthiness", "Healthcare", "Benefit", "Cost", "Nurse", "Doctor"]
+    },
+    Sports: {
+        "it": ["Attività di squadra", "Individuali", "Giocare", "Attrezzature", "Luoghi", "Calcio"],
+        "en": ["Stretching", "Fair play", "Cricket", "Hockey", "Tennis", "Pallavolo", "Ping-pong", "Baseball", "Rugby", "Football americano"]
+    },
+    Politica: {
+        "it": ["Stato", "Senato", "Governo", "Politologo", "Movimento politico", "Sindacato", "Cittadinanza", "Democrazia", "Solidarismo", "Strumentalizzazione", "Ideologie", "Partiti", "Istituti", "Ministro degli interni", "Polizia di Stato", "Armi", "Difesa", "Pubblico"],
+        "en": ["President", "Prime Minister", "Member of Parliament", "Politics", "Politician", "Bedfellow", "Party", "Coalition", "Alliance", "Election", "Vote", "Ballot", "Majority", "Full Majority"]
     }
 }
+
 
 /// to expand for other models, put the generic prompt parsing in a parent class, then the specific stuff in each individual  class 
 class ChatGPTDetector {
