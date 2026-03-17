@@ -202,7 +202,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                     // sign it
                     const signature = await computeHMAC(payloadString);
                     // then send it on to the backend
-                    const res = await fetch("http://localhost:8000/events", {
+                    const res = await fetch("https://dev.madebyshu.net/events", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",

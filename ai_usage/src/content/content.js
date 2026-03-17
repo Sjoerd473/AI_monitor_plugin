@@ -1,25 +1,56 @@
 
-const categorie_keywords = {
-    Marketing: {
-        "it": ["Mercato", "Prodotto", "Prezzo", "Promozione", "Strategico", "Aziendale"],
-        "en": ["Target", "Branding", "Social Media", "Market", "Internet"]
+const CATEGORY_KEYWORDS = {
+    marketing: {
+        it: ["Mercato", "Prodotto", "Prezzo", "Promozione", "Strategico", "Aziendale"],
+        en: ["Target", "Branding", "Social Media", "Market", "Internet"]
     },
-    Finance: {
-        "it": ["Analisi", "Economia", "Azioni", "Obbligazioni", "Derivati", "Portafoglio", "Tassi", "Liquidità", "Rischio", "Rendimento"],
-        "en": ["Trading", "Rating", "Cash Flow"]
+    finance: {
+        it: ["Analisi", "Economia", "Azioni", "Obbligazioni", "Derivati", "Portafoglio", "Tassi", "Liquidità", "Rischio", "Rendimento"],
+        en: ["Trading", "Rating", "Cash Flow"]
     },
-    Health: {
-        "it": ["Salute", "Benessere", "Buona Salute", "Condizioni", "Sanità", "Educazione sanitaria"],
-        "en": ["Well-being", "Healthiness", "Healthcare", "Benefit", "Cost", "Nurse", "Doctor"]
+    health: {
+        it: ["Salute", "Benessere", "Buona Salute", "Condizioni", "Sanità", "Educazione sanitaria"],
+        en: ["Well-being", "Healthiness", "Healthcare", "Benefit", "Cost", "Nurse", "Doctor"]
     },
-    Sports: {
-        "it": ["Attività di squadra", "Individuali", "Giocare", "Attrezzature", "Luoghi", "Calcio"],
-        "en": ["Stretching", "Fair play", "Cricket", "Hockey", "Tennis", "Pallavolo", "Ping-pong", "Baseball", "Rugby", "Football americano"]
+    sports: {
+        it: ["Attività di squadra", "Individuali", "Giocare", "Attrezzature", "Luoghi", "Calcio"],
+        en: ["Stretching", "Fair play", "Cricket", "Hockey", "Tennis", "Pallavolo", "Ping-pong", "Baseball", "Rugby", "Football americano"]
     },
-    Politica: {
-        "it": ["Stato", "Senato", "Governo", "Politologo", "Movimento politico", "Sindacato", "Cittadinanza", "Democrazia", "Solidarismo", "Strumentalizzazione", "Ideologie", "Partiti", "Istituti", "Ministro degli interni", "Polizia di Stato", "Armi", "Difesa", "Pubblico"],
-        "en": ["President", "Prime Minister", "Member of Parliament", "Politics", "Politician", "Bedfellow", "Party", "Coalition", "Alliance", "Election", "Vote", "Ballot", "Majority", "Full Majority"]
+    politics: {
+        it: ["Stato", "Senato", "Governo", "Politologo", "Movimento politico", "Sindacato", "Cittadinanza", "Democrazia", "Solidarismo", "Strumentalizzazione", "Ideologie", "Partiti", "Istituti", "Ministro degli interni", "Polizia di Stato", "Armi", "Difesa", "Pubblico"],
+        en: ["President", "Prime Minister", "Member of Parliament", "Politics", "Politician", "Bedfellow", "Party", "Coalition", "Alliance", "Election", "Vote", "Ballot", "Majority", "Full Majority"]
+    },
+    culture: {
+        it: [],
+        en: []
+    },
+    climate: {
+        it: [],
+        en: []
+    },
+    coding: {
+        it: [],
+        en: []
     }
+    // education
+    // science
+    // history
+    // philosophy
+    // psychology
+    // travel
+    // food
+    // fashion
+    // relationships
+    // self_improvement
+    // art
+    // music
+    // writing
+    // film
+    // gaming
+    // ai
+    // cybersecurity
+    // law
+    // sustainability    
 }
 
 
