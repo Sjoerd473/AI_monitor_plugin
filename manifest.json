@@ -30,7 +30,7 @@
         "https://www.perplexity.ai/*"
       ],
       "js": [
-        "src/content.js"
+        "src/main.js"
       ],
       "run_at": "document_idle"
     }

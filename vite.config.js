@@ -13,7 +13,7 @@ export default defineConfig({
     build: {
         rollupOptions: {
             input: {
-                content: resolve(__dirname, 'src/content/content.js'),
+                main: resolve(__dirname, 'src/content/main.js'),
                 background: resolve(__dirname, 'src/background/background.js'),
             },
             output: {
