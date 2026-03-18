@@ -1,4 +1,4 @@
-import { CATEGORY_KEYWORDS, LANG_KEYWORDS, PROMPT_KEYWORDS, SAFETY_KEYWORDS } from "./maps";
+import { CATEGORY_KEYWORDS, LANG_KEYWORDS, PROMPT_KEYWORDS, SAFETY_KEYWORDS } from "./helpers/maps";
 
 export class baseDetector {
     constructor() {
@@ -17,9 +17,16 @@ export class baseDetector {
         this.lastRegenerateUsed = false;
         this.lastSuggestedPromptUsed = false;
         this.schemaVersion = 1;
+
+        this.lastInput = "";
+        this.lastAssistantText = "";
+        this.lastMessageCount = 0;
         // this means init() is called even before constructor finishes
         // this also means init() is always called when a new instance of a Detector is created
         this.init();
+        this.injectScript();
+        this.setupModelListener();
+
     }
 
 
@@ -60,48 +67,107 @@ export class baseDetector {
         });
     }
 
+
+
     waitForElement(selector, timeout = 30000) {
-        // resolve and reject are needed to handle a promise, can't use a normal return
+        const selectors = Array.isArray(selector) ? selector : [selector];
         return new Promise((resolve, reject) => {
             const start = Date.now();
-            // The actual polling function
             const check = () => {
-                // Look for the element
-                const element = document.querySelector(selector);
-                // if it is found, resolve the promise and return the element
-                if (element) {
-                    resolve(element);
-                    return;
+                for (const sel of selectors) {
+                    const el = document.querySelector(sel);
+                    if (el) { resolve(el); return; }
                 }
-                // if 30 seconds have passed, fails
                 if (Date.now() - start > timeout) {
-                    reject(new Error(`Element ${selector} not found within ${timeout}ms`));
+                    reject(new Error(`None of [${selectors.join(', ')}] found within ${timeout}ms`));
                     return;
                 }
-                // Nothing was found, but try again in 100ms
                 setTimeout(check, 100);
             };
-            // call the polling function
             check();
         });
     }
 
     async startDetection(targetEditor, targetChatContainer) {
-        // try catch because finding elements can fail
         try {
-            console.log("[AI Usage Meter] Starting detection on", location.hostname);
+            // Wait for editor = React is ready
+            await this.waitForElement(targetEditor);
 
-            // first wait for the critical elements
-            const editor = await this.waitForElement(targetEditor);
-            const chatContainer = await this.waitForElement(targetChatContainer);
+            // Explicitly grab #root as the container, NOT the editor
+            const chatContainer = document.querySelector(targetChatContainer);
+            if (!chatContainer) throw new Error('#root not found');
 
-            // if the elements were found, set up the listeners on said elements 
-            console.log("[AI Usage Meter] Editor and container found");
-            this.setupListeners(editor, chatContainer);
+            console.log("[AI Usage Meter] Container found:", chatContainer);
+            console.log("[AI Usage Meter] Container children:", chatContainer.children.length);
+
+            this.startUniversalDetection(chatContainer);
 
         } catch (error) {
             console.error("[AI Usage Meter] Detection setup failed:", error);
         }
+    }
+
+    getActiveEditorText() {
+        const el = document.activeElement;
+
+        if (!el) return "";
+
+        if (el.tagName === "TEXTAREA") {
+            return el.value;
+        }
+
+        if (el.isContentEditable) {
+            return el.innerText || el.textContent || "";
+        }
+
+        return "";
+    }
+
+    getMessageCount() {
+        if (!this.allMessagesSelector) return 0;
+        return document.querySelectorAll(this.allMessagesSelector).length;
+    }
+
+    getLastAssistantText() {
+        const el = document.querySelector(
+            '[data-message-author-role="assistant"]:last-child, .prose:last-child'
+        );
+
+        return el?.innerText?.trim() || "";
+    }
+
+    startUniversalDetection(chatContainer) {
+        console.log("[AI Usage Meter] Starting UNIVERSAL detection");
+
+        setInterval(() => {
+            const text = this.getActiveEditorText().trim();
+            if (text.length > 0) {
+                this.lastInput = text;
+            }
+        }, 300);
+
+        const observer = new MutationObserver(() => {
+            // ✅ Use getLastAssistantMessage() instead of hardcoded .prose
+            const assistantText = this.getLastAssistantMessage();
+            const currentInput = this.getActiveEditorText().trim();
+
+            if (
+                assistantText &&
+                assistantText !== this.lastAssistantText &&
+                this.lastInput &&
+                currentInput === ""
+            ) {
+                console.log("[AI Usage Meter] ✅ REAL SUBMIT DETECTED");
+                this.handleSubmitWithText(this.lastInput, chatContainer);
+                this.lastInput = "";
+                this.lastAssistantText = assistantText;
+            }
+        });
+
+        observer.observe(chatContainer, {
+            childList: true,
+            subtree: true
+        });
     }
 
     setupListeners(editor, chatContainer) {
@@ -249,18 +315,24 @@ export class baseDetector {
     }
 
     getAIModel() {
-        // 1. Expanded selectors (model button, dropdown items, active indicators)
+        // 1. Fetch-derived model (BEST)
+        if (this.currentModel) return this.currentModel;
 
+        // 2. DOM fallback
         for (const selector of this.aiModelSelectors) {
             const elements = document.querySelectorAll(selector);
             for (const el of elements) {
-                const text = el.innerText?.trim() || el.title?.trim() || el.dataset.model;
+                const text =
+                    el.innerText?.trim() ||
+                    el.title?.trim() ||
+                    el.dataset.model;
+
                 const cleaned = this.normalizeModelName(text);
                 if (cleaned) return cleaned;
             }
         }
 
-        // 2. Updated known models + page scan fallback
+        // 3. Page scan fallback
         const pageText = document.body.innerText.toLowerCase();
         for (const model of this.knownModels) {
             if (pageText.includes(model.toLowerCase())) return model;
@@ -271,12 +343,31 @@ export class baseDetector {
 
     normalizeModelName(text) {
         if (!text) return null;
-        const lower = text.toLowerCase().replace(/[^a-z0-9-]/g, '');
 
+        const lower = text
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, '');
+
+        // 1. Pattern mapping (preferred)
         for (const [pattern, normalized] of Object.entries(this.modelNormalizationPatterns)) {
             if (lower.includes(pattern)) return normalized;
         }
-        return lower.includes('gpt') ? lower : null;
+
+        // 2. Known prefixes (keep these)
+        if (
+            lower.includes('gpt') ||
+            lower.includes('pplx') ||
+            lower.includes('sonar') ||
+            lower.includes('claude') ||
+            lower.includes('gemini') ||
+            lower.includes('mistral') ||
+            lower.includes('llama')
+        ) {
+            return lower;
+        }
+
+        // 3. Unknown but still useful → return raw instead of null
+        return lower || null;
     }
 
     // Polling watcher for post-send (call after detect send)
@@ -294,6 +385,29 @@ export class baseDetector {
                 callback("unknown");
             }
         }, 500);
+    }
+
+    injectScript() {
+        const script = document.createElement('script');
+        script.src = chrome.runtime.getURL('injected.js');
+        script.onload = () => script.remove();
+        (document.head || document.documentElement).appendChild(script);
+    }
+
+    setupModelListener() {
+        window.addEventListener("message", (event) => {
+            if (event.source !== window) return;
+
+            if (event.data?.type === "AI_MODEL_DETECTED") {
+                const rawModel = event.data.model;
+
+                const normalized = this.normalizeModelName(rawModel);
+
+                console.log("[AI Usage Meter] Model detected:", normalized);
+
+                this.currentModel = normalized;
+            }
+        });
     }
 
     // Usage: detect send (e.g., on button click/input), then watch
@@ -467,102 +581,109 @@ export class baseDetector {
 
 
 
-    async handleSubmit(editor, chatContainer) {
-        // the '?' prevents a crash incase it returns null or undefined
-        const text = editor.innerText?.trim();
+    async handleSubmitWithText(text, chatContainer) {
         if (!text) return;
 
-        console.log("[AI Usage Meter] Processing prompt");
+        console.log("[AI Usage Meter] Processing prompt", text);
 
-        // Pre-calculate all metrics
-        const model = this.getAIModel();
-        const tokensIn = this.estimateTokens(text);
-        const conversationId = this.getConversationId();
-        const promptStartTime = performance.now();
+        // 🔥 Wait for model detection BEFORE building event
+        this.watchForModelUpdate((model) => {
 
-        const modelMode = this.detectModelMode();
-        const promptType = this.classifyPrompt(text);
-        const promptLanguage = this.detectLanguage(text);
-        const promptDomain = this.detectDomain(text);
-        const safetyCategory = this.classifySafety(text);
-        const messageIndex = this.getUserMessageIndex();
-        const conversationLength = this.getConversationLength();
-        const isFollowup = this.detectFollowup(text);
+            console.log("[AI Usage Meter] Using model:", model);
 
-        const sessionMetrics = {
-            session_id: this.sessionId,
-            session_start: new Date(this.sessionStart).toISOString(),
-            session_prompt_count: this.sessionPromptCount,
-            session_duration_ms: Date.now() - this.sessionStart,
-            time_since_last_prompt_ms: this.timeSinceLastPrompt
-        };
+            const tokensIn = this.estimateTokens(text);
+            const conversationId = this.getConversationId();
+            const promptStartTime = performance.now();
 
-        const uiSignals = {
-            regenerate_used: this.lastRegenerateUsed,
-            suggested_prompt_used: this.lastSuggestedPromptUsed,
-            image_attached: this.hasImageAttachment(),
-            file_attached: this.hasFileAttachment(),
-            voice_input: this.isVoiceInputActive(),
-            tool_active: this.isToolActive()
-        };
+            const modelMode = this.detectModelMode();
+            const promptType = this.classifyPrompt(text);
+            const promptLanguage = this.detectLanguage(text);
+            const promptDomain = this.detectDomain(text);
+            const safetyCategory = this.classifySafety(text);
 
-        // Reset flags BEFORE tracking response
-        this.lastRegenerateUsed = false;
-        this.lastSuggestedPromptUsed = false;
+            const messageIndex = this.getUserMessageIndex(this.userMessagesSelector);
+            const conversationLength = this.getConversationLength(this.allMessagesSelector);
+            const isFollowup = this.detectFollowup(text);
 
-        // Track response completion
-        // response and streamingDurationMS are returned from trackResponse
-        // trackResponse fires first, going into the text observing loop
-        // only when it is finished does it go on to creating the const event
-        // this ensures we have the full response before proceeding
-        this.trackResponse(chatContainer, promptStartTime, (response, streamingDurationMs) => {
-            const event = {
-                schema_version: this.schemaVersion,
-                timestamp: new Date().toISOString(),
-                user: { user_id: this.userId },
-                session: sessionMetrics,
-                prompt: {
-                    text_length: text.length,
-                    tokens_in: tokensIn,
-                    prompt_type: promptType,
-                    domain: promptDomain,
-                    language: promptLanguage,
-                    is_followup: isFollowup,
-                    message_index: messageIndex,
-                    conversation_length: conversationLength,
-                    safety_category: safetyCategory,
-                    timestamp: new Date().toISOString()
-                },
-                response: {
-                    tokens_out: this.estimateTokens(response),
-                    characters_out: response.length,
-                    latency_ms: performance.now() - promptStartTime,
-                    streaming_duration_ms: streamingDurationMs
-                },
-                model: { model_name: model, model_mode: modelMode },
-                ui_interaction: uiSignals,
-                environment: this.getClientEnvironment(),
-                source: this.source,
-                conversation_id: conversationId
+            const sessionMetrics = {
+                session_id: this.sessionId,
+                session_start: new Date(this.sessionStart).toISOString(),
+                session_prompt_count: this.sessionPromptCount,
+                session_duration_ms: Date.now() - this.sessionStart,
+                time_since_last_prompt_ms: this.timeSinceLastPrompt
             };
 
-            chrome.runtime.sendMessage({
-                type: "PROMPT_EVENT",
-                payload: event
-            }, (response) => {
-                if (chrome.runtime.lastError) {
-                    console.error("[AI Usage Meter] Failed to send event:", chrome.runtime.lastError);
-                } else {
-                    console.log("[AI Usage Meter] Event sent successfully");
-                }
+            const uiSignals = {
+                regenerate_used: this.lastRegenerateUsed,
+                suggested_prompt_used: this.lastSuggestedPromptUsed,
+                image_attached: this.hasImageAttachment(this.imageAttachmentSelector),
+                file_attached: this.hasFileAttachment(this.fileAttachmentSelector),
+                voice_input: this.isVoiceInputActive(this.voiceImputSelector),
+                tool_active: this.isToolActive(this.toolSelector)
+            };
+
+            // reset flags after capture
+            this.lastRegenerateUsed = false;
+            this.lastSuggestedPromptUsed = false;
+
+            // 🔁 Track streaming response
+            this.trackResponse(chatContainer, promptStartTime, (response, streamingDurationMs) => {
+
+                const event = {
+                    schema_version: this.schemaVersion,
+                    timestamp: new Date().toISOString(),
+
+                    user: {
+                        user_id: this.userId
+                    },
+
+                    session: sessionMetrics,
+
+                    prompt: {
+                        text_length: text.length,
+                        tokens_in: tokensIn,
+                        prompt_type: promptType,
+                        domain: promptDomain,
+                        language: promptLanguage,
+                        is_followup: isFollowup,
+                        message_index: messageIndex,
+                        conversation_length: conversationLength,
+                        safety_category: safetyCategory,
+                        timestamp: new Date().toISOString()
+                    },
+
+                    response: {
+                        tokens_out: this.estimateTokens(response),
+                        characters_out: response.length,
+                        latency_ms: performance.now() - promptStartTime,
+                        streaming_duration_ms: streamingDurationMs
+                    },
+
+                    model: {
+                        model_name: model,
+                        model_mode: modelMode
+                    },
+
+                    ui_interaction: uiSignals,
+
+                    environment: this.getClientEnvironment(),
+
+                    source: this.source,
+
+                    conversation_id: conversationId
+                };
+
+                console.log("[AI Usage Meter] 🚀 Sending event", event);
+
+                chrome.runtime.sendMessage({
+                    type: "PROMPT_EVENT",
+                    payload: event
+                });
             });
+
         });
     }
 
 
 }
 
-
-
-// Track Regenerate
-// Track SuggestedPrompts

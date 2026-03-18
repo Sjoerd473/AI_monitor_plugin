@@ -1,4 +1,4 @@
-import { baseDetector } from "./baseDetector";
+import { baseDetector } from "./base/baseDetector";
 
 export class chatGPTDetector extends baseDetector {
 
@@ -67,5 +67,5 @@ export class chatGPTDetector extends baseDetector {
         this.source = 'chatgpt'
     }
 
-  
+
 }
