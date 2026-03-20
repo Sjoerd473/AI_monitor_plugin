@@ -6,7 +6,8 @@
   "permissions": [
     "scripting",
     "storage",
-    "activeTab"
+    "activeTab",
+    "downloads"
   ],
   "host_permissions": [
     "https://chat.openai.com/*",
@@ -19,6 +20,9 @@
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html"
   },
   "content_scripts": [
     {

@@ -51,6 +51,23 @@ async function getOrCreateUserId() {
     return newUserId;
 }
 
+async function getOrCreateApiKey() {
+    const { api_key } = await storageGet("api_key");
+    if (api_key) return api_key;
+
+    const { user_id } = await storageGet("user_id");
+
+    const res = await fetch("https://dev.madebyshu.net/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id })
+    });
+
+    const { token } = await res.json();
+    await storageSet({ api_key: token });
+    return token;
+}
+
 // =========================
 //  SESSION MANAGEMENT
 // =========================
@@ -72,7 +89,7 @@ async function getOrCreateSessionId() {
     console.log(lastActive)
     console.log((now - lastActive) > SESSION_TIMEOUT)
     console.log(expired)
-    console.log("finished")
+    console.log("finished, or am I?")
 
     if (expired) {
         // so if more than 30 mins has passed, we create a new session
@@ -157,6 +174,35 @@ async function computeHMAC(payloadString, key = SECRET_KEY) {
 }
 
 // =========================
+//  DATASET DOWNLOAD
+// =========================
+async function downloadDataset() {
+    const apiKey = await getOrCreateApiKey();
+
+    const res = await fetch("https://dev.madebyshu.net/download/dataset", {
+        headers: { "Authorization": `Bearer ${apiKey}` }
+    });
+
+    if (res.status === 429) {
+        console.warn("[AI Usage Meter] Already downloaded today");
+        return { status: "rate_limited" };
+    }
+
+    if (!res.ok) {
+        console.error("[AI Usage Meter] Download failed:", res.status);
+        return { status: "error", code: res.status };
+    }
+
+    // convert to base64 data URL instead of createObjectURL
+    const buffer = await res.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    const dataUrl = `data:application/zip;base64,${base64}`;
+
+    chrome.downloads.download({ url: dataUrl, filename: "AI_monitor_dataset.zip" });
+    return { status: "ok" };
+}
+
+// =========================
 //  MESSAGE HANDLER
 // =========================
 
@@ -196,20 +242,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             // this is called after every chatGPT response
             case "PROMPT_EVENT": {
                 try {
-                    // convert  the event to json
-                    const payloadString = JSON.stringify(msg.payload);
-                    console.log("[AI Usage Meter] Prompt event received:", msg.payload);
-                    // sign it
-                    const signature = await computeHMAC(payloadString);
-                    // then send it on to the backend
+                    const apiKey = await getOrCreateApiKey();
+
                     const res = await fetch("https://dev.madebyshu.net/events", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
-                            "X-Signature": signature
+                            "Authorization": `Bearer ${apiKey}`
                         },
-                        // a raw json string for HMAC verification
-                        body: payloadString
+                        body: JSON.stringify(msg.payload)
                     });
 
                     console.log("[AI Usage Meter] Server response:", await res.text());
@@ -218,6 +259,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 }
                 // Acknowledge to content script
                 sendResponse({ status: "ok" });
+                break;
+            }
+
+            case "DOWNLOAD_DATASET": {
+                const result = await downloadDataset();
+                sendResponse(result);
                 break;
             }
 

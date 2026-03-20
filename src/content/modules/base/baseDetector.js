@@ -1,6 +1,4 @@
 import { computeEnvironmentalImpact } from "./helpers/energyCalc";
-import { CATEGORY_KEYWORDS, LANG_KEYWORDS, PROMPT_KEYWORDS, SAFETY_KEYWORDS } from "./helpers/maps";
-
 import { Parser } from "./helpers/parser";
 
 export class baseDetector extends Parser {
@@ -338,9 +336,12 @@ export class baseDetector extends Parser {
             this.trackResponse(chatContainer, promptStartTime, (response, streamingDurationMs) => {
                 const tokensOut = this.estimateTokens(response)
                 const latencyMs = performance.now() - promptStartTime;
-                const [energy, co2, water] = computeEnvironmentalImpact(tokensIn, tokensOut, latencyMs, streamingDurationMs, model, modelMode, promptType, promptDomain, promptLanguage, conversationLength, isFollowup, uiSignals
-
+                const [energy, co2, water] = computeEnvironmentalImpact(
+                    tokensIn, tokensOut, latencyMs, streamingDurationMs, model,
+                     modelMode, promptType, promptDomain, promptLanguage,
+                      conversationLength, isFollowup, uiSignals
                 )
+
                 const event = {
                     schema_version: this.schemaVersion,
                     timestamp: new Date().toISOString(),
