@@ -52,7 +52,7 @@ const PROMPT_KEYWORDS = {
 
   explanation: {
     it: ["spiegazione", "descrizione", "definizione"],
-    en: ["explanation", "description", "definition"],
+    en: ["explan", "description", "definition"],
     es: ["explicación", "descripción", "definición"],
     fr: ["explication", "description", "définition"],
     du: ["Erklärung", "Beschreibung", "Definition"]
@@ -68,7 +68,7 @@ const PROMPT_KEYWORDS = {
 
   planning: {
     it: ["pianificazione", "strategia", "obiettivo"],
-    en: [//"planning", "strategy", "goal"],
+    en: ["plan", "strategy", "goal"],
     es: ["planificación", "estrategia", "objetivo"],
     fr: ["planification", "stratégie", "objectif"],
     du: ["Planung", "Strategie", "Ziel"]
@@ -76,7 +76,7 @@ const PROMPT_KEYWORDS = {
 
   editing: {
     it: ["modifica", "revisione", "correzione"],
-    en: [//"editing", "revision", "correction"],
+    en: ["edit", "revision", "correction"],
     es: ["edición", "revisión", "corrección"],
     fr: ["édition", "révision", "correction"],
     du: ["Bearbeitung", "Überarbeitung", "Korrektur"]
