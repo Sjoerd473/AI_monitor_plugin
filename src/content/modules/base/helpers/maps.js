@@ -1,14 +1,5 @@
 
 
-// // quale dei due va bene?
-// const LANG_KEYWORDS =  {
-//   it: [["ciao"], ["per favore"], ["grazie"], ["salve"], ["buongiorno"], ["buonasera"], ["prego"], ["scusa"], ["sì"], ["no"], ["aiuto"]],
-//   en: [["hello"], ["please"], ["thank"], ["hi"], ["thanks"], ["welcome"], ["goodbye"], ["sorry"], ["yes"], ["no"], ["help"]],
-//   es: [["hola"], ["por favor"], ["gracias"], ["buenos días"], ["de nada"], ["adiós"], ["lo siento"], ["sí"], ["no"], ["ayuda"]],
-//   fr: [["bonjour"], ["s'il vous plaît"], ["merci"], ["salut"], ["de rien"], ["au revoir"], ["pardon"], ["oui"], ["non"], ["aide"]],
-//   de: [["hallo"], ["bitte"], ["danke"], ["guten tag"], ["gern geschehen"], ["tschüss"], ["entschuldigung"], ["ja"], ["nein"], ["hilfe"]]
-// };
-
 
 // questo va bene
 const LANG_KEYWORDS = {
@@ -49,7 +40,7 @@ const PROMPT_KEYWORDS = {
 
   explanation: {
     it: ["spiegazione", "descrizione", "definizione"],
-    en: ["explan", "description", "definition"],
+    en: ["explannig", "description", "definition"],
     es: ["explicación", "descripción", "definición"],
     fr: ["explication", "description", "définition"],
     du: ["Erklärung", "Beschreibung", "Definition"]
@@ -65,7 +56,7 @@ const PROMPT_KEYWORDS = {
 
   planning: {
     it: ["pianificazione", "strategia", "obiettivo"],
-    en: ["plan", "strategy", "goal"],
+    en: ["planning", "strategy", "goal"],
     es: ["planificación", "estrategia", "objetivo"],
     fr: ["planification", "stratégie", "objectif"],
     du: ["Planung", "Strategie", "Ziel"]
@@ -73,7 +64,7 @@ const PROMPT_KEYWORDS = {
 
   editing: {
     it: ["modifica", "revisione", "correzione"],
-    en: ["edit", "revision", "correction"],
+    en: ["editing", "revision", "correction"],
     es: ["edición", "revisión", "corrección"],
     fr: ["édition", "révision", "correction"],
     du: ["Bearbeitung", "Überarbeitung", "Korrektur"]
