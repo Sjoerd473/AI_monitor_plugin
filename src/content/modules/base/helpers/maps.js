@@ -4,6 +4,8 @@
 // en: [parole] ecc ecc.
 // ugale agli altri dizionari.
 
+
+// quale dei due va bene?
 const LANG_KEYWORDS =  {
   it: [["ciao"], ["per favore"], ["grazie"], ["salve"], ["buongiorno"], ["buonasera"], ["prego"], ["scusa"], ["sì"], ["no"], ["aiuto"]],
   en: [["hello"], ["please"], ["thank"], ["hi"], ["thanks"], ["welcome"], ["goodbye"], ["sorry"], ["yes"], ["no"], ["help"]],
@@ -12,7 +14,7 @@ const LANG_KEYWORDS =  {
   de: [["hallo"], ["bitte"], ["danke"], ["guten tag"], ["gern geschehen"], ["tschüss"], ["entschuldigung"], ["ja"], ["nein"], ["hilfe"]]
 };
 
-const LANG_KEYWORDS = {
+//const LANG_KEYWORDS = {
   it: ["ciao", "per favore", "grazie", "salve", "buongiorno", "buonasera", "prego", "scusa", "sì", "no", "aiuto"],
   en: ["hello", "please", "thank", "hi", "thanks", "welcome", "goodbye", "sorry", "yes", "no", "help"],
   es: ["hola", "por favor", "gracias", "buenos días", "de nada", "adiós", "lo siento", "sí", "no", "ayuda"],
@@ -34,7 +36,7 @@ const LANG_KEYWORDS = {
 const PROMPT_KEYWORDS = {
   creative_writing: {
     it: ["scrittura creativa", "racconto", "narrazione"],
-    en: ["creative writing", "story", "narrative"],
+    en: [//"creative writing", "story", "narrative"],
     es: ["escritura creativa", "cuento", "narrativa"],
     fr: ["écriture créative", "récit", "conte"],
     du: ["kreatives Schreiben", "Geschichte", "Erzählung"]
@@ -58,7 +60,7 @@ const PROMPT_KEYWORDS = {
 
   data_analysis: {
     it: ["analisi dati", "statistica", "grafico"],
-    en: ["data analysis", "statistics", "chart"],
+    en: [//"data analysis", "statistics", "chart"],
     es: ["análisis de datos", "estadística", "gráfico"],
     fr: ["analyse de données", "statistiques", "graphique"],
     du: ["Datenanalyse", "Statistik", "Diagramm"]
@@ -66,7 +68,7 @@ const PROMPT_KEYWORDS = {
 
   planning: {
     it: ["pianificazione", "strategia", "obiettivo"],
-    en: ["planning", "strategy", "goal"],
+    en: [//"planning", "strategy", "goal"],
     es: ["planificación", "estrategia", "objetivo"],
     fr: ["planification", "stratégie", "objectif"],
     du: ["Planung", "Strategie", "Ziel"]
@@ -74,7 +76,7 @@ const PROMPT_KEYWORDS = {
 
   editing: {
     it: ["modifica", "revisione", "correzione"],
-    en: ["editing", "revision", "correction"],
+    en: [//"editing", "revision", "correction"],
     es: ["edición", "revisión", "corrección"],
     fr: ["édition", "révision", "correction"],
     du: ["Bearbeitung", "Überarbeitung", "Korrektur"]
