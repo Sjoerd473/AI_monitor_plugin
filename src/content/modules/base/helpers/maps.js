@@ -4,13 +4,23 @@
 // en: [parole] ecc ecc.
 // ugale agli altri dizionari.
 
-const LANG_KEYWORDS = {
-  it: /ciao|per favore|grazie|salve|buongiorno|buonasera|prego|scusa|sì|no|aiuto/i,
-  en: /hello|please|thank|hi|thanks|welcome|goodbye|sorry|yes|no|help/i,
-  es: /hola|por favor|gracias|buenos días|de nada|adiós|lo siento|sí|no|ayuda/i,
-  fr: /bonjour|s'il vous plaît|merci|salut|de rien|au revoir|pardon|oui|non|aide/i,
-  de: /hallo|bitte|danke|guten tag|gern geschehen|tschüss|entschuldigung|ja|nein|hilfe/i,
+const LANG_KEYWORDS =  {
+  it: [["ciao"], ["per favore"], ["grazie"], ["salve"], ["buongiorno"], ["buonasera"], ["prego"], ["scusa"], ["sì"], ["no"], ["aiuto"]],
+  en: [["hello"], ["please"], ["thank"], ["hi"], ["thanks"], ["welcome"], ["goodbye"], ["sorry"], ["yes"], ["no"], ["help"]],
+  es: [["hola"], ["por favor"], ["gracias"], ["buenos días"], ["de nada"], ["adiós"], ["lo siento"], ["sí"], ["no"], ["ayuda"]],
+  fr: [["bonjour"], ["s'il vous plaît"], ["merci"], ["salut"], ["de rien"], ["au revoir"], ["pardon"], ["oui"], ["non"], ["aide"]],
+  de: [["hallo"], ["bitte"], ["danke"], ["guten tag"], ["gern geschehen"], ["tschüss"], ["entschuldigung"], ["ja"], ["nein"], ["hilfe"]]
 };
+
+const LANG_KEYWORDS = {
+  it: ["ciao", "per favore", "grazie", "salve", "buongiorno", "buonasera", "prego", "scusa", "sì", "no", "aiuto"],
+  en: ["hello", "please", "thank", "hi", "thanks", "welcome", "goodbye", "sorry", "yes", "no", "help"],
+  es: ["hola", "por favor", "gracias", "buenos días", "de nada", "adiós", "lo siento", "sí", "no", "ayuda"],
+  fr: ["bonjour", "s'il vous plaît", "merci", "salut", "de rien", "au revoir", "pardon", "oui", "non", "aide"],
+  de: ["hallo", "bitte", "danke", "guten tag", "gern geschehen", "tschüss", "entschuldigung", "ja", "nein", "hilfe"]
+};
+
+
 
 // anche qui stai attento ad essere consistente, non 'ita', 'eng' ecc. ma 'it', en' ecc. come hai fatto altrove.
 // poi un altra cosa, qui hai mischiato prompt e category keywords.
@@ -23,167 +33,60 @@ const LANG_KEYWORDS = {
 
 const PROMPT_KEYWORDS = {
   creative_writing: {
-    ita: ["scrittura creativa", "racconto", "storia", "narrazione"],
-    eng: ["creative writing", "story", "narrative", "tale"],
-    spa: ["escritura creativa", "historia", "narrativa", "cuento"],
-    fra: ["écriture créative", "histoire", "récit", "conte"],
-    deu: ["kreatives Schreiben", "Geschichte", "Erzählung", "Narrativ"]
+    it: ["scrittura creativa", "racconto", "narrazione"],
+    en: ["creative writing", "story", "narrative"],
+    es: ["escritura creativa", "cuento", "narrativa"],
+    fr: ["écriture créative", "récit", "conte"],
+    du: ["kreatives Schreiben", "Geschichte", "Erzählung"]
   },
-  summarization: {
-    ita: ["riassunto", "sintesi", "abstract", "riepilogo"],
-    eng: ["summary", "overview", "abstract", "recap"],
-    spa: ["resumen", "síntesis", "resumen breve", "recapitulación"],
-    fra: ["résumé", "synthèse", "abrégé", "récapitulatif"],
-    deu: ["Zusammenfassung", "Synthese", "Abstract", "Rückblick"]
-  },
-  explanation: {
-    ita: ["spiegazione", "descrizione", "chiarimento", "definizione"],
-    eng: ["explanation", "description", "clarification", "definition"],
-    spa: ["explicación", "descripción", "aclaración", "definición"],
-    fra: ["explication", "description", "clarification", "définition"],
-    deu: ["Erklärung", "Beschreibung", "Klärung", "Definition"]
-  },
-  // coding: {
-  //   ita: ["programmazione", "codice", "algoritmo", "debug"],
-  //   eng: ["coding", "code", "algorithm", "debugging"],
-  //   spa: ["programación", "código", "algoritmo", "depuración"],
-  //   fra: ["programmation", "code", "algorithme", "débogage"],
-  //   deu: ["Programmierung", "Code", "Algorithmus", "Debugging"]
-  // },
-  data_analysis: {
-    ita: ["analisi dati", "statistica", "grafico", "modello"],
-    eng: ["data analysis", "statistics", "chart", "model"],
-    spa: ["análisis de datos", "estadística", "gráfico", "modelo"],
-    fra: ["analyse de données", "statistiques", "graphique", "modèle"],
-    deu: ["Datenanalyse", "Statistik", "Diagramm", "Modell"]
-  },
-  planning: {
-    ita: ["pianificazione", "strategia", "obiettivo", "agenda"],
-    eng: ["planning", "strategy", "goal", "agenda"],
-    spa: ["planificación", "estrategia", "objetivo", "agenda"],
-    fra: ["planification", "stratégie", "objectif", "agenda"],
-    deu: ["Planung", "Strategie", "Ziel", "Agenda"]
-  },
-  editing: {
-    ita: ["modifica", "revisione", "correzione", "miglioramento"],
-    eng: ["editing", "revision", "correction", "improvement"],
-    spa: ["edición", "revisión", "corrección", "mejora"],
-    fra: ["édition", "révision", "correction", "amélioration"],
-    deu: ["Bearbeitung", "Überarbeitung", "Korrektur", "Verbesserung"]
-  },
-  riassunto: {
-    ita: ["riassunto", "sintesi", "riepilogo", "compendio", "abstract"],
-    eng: ["summary", "overview", "recap", "digest", "abstract"],
-    spa: ["resumen", "síntesis", "recapitulación", "compendio", "extracto"],
-    fra: ["résumé", "synthèse", "récapitulatif", "compendium", "abrégé"],
-    deu: ["Zusammenfassung", "Synthese", "Rückblick", "Kompendium", "Abstract"]
-  },
-  spiegazione: {
-    ita: ["spiegazione", "chiarimento", "illustrazione", "analisi", "descrizione"],
-    eng: ["explanation", "clarification", "illustration", "analysis", "description"],
-    spa: ["explicación", "aclaración", "ilustración", "análisis", "descripción"],
-    fra: ["explication", "clarification", "illustration", "analyse", "description"],
-    deu: ["Erklärung", "Klärung", "Illustration", "Analyse", "Beschreibung"]
-  },
-  pianificazione: {
-    ita: ["piano", "strategia", "obiettivo", "agenda", "priorità"],
-    eng: ["plan", "strategy", "goal", "schedule", "priority"],
-    spa: ["plan", "estrategia", "objetivo", "agenda", "prioridad"],
-    fra: ["plan", "stratégie", "objectif", "agenda", "priorité"],
-    deu: ["Plan", "Strategie", "Ziel", "Zeitplan", "Priorität"]
-  },
-  directions: {
-    ita: ["direzione", "sinistra", "destra", "dritto"],
-    eng: ["direction", "left", "right", "straight"],
-    spa: ["dirección", "izquierda", "derecha", "recto"],
-    fra: ["direction", "gauche", "droite", "tout droit"],
-    deu: ["Richtung", "links", "rechts", "geradeaus"]
-  },
-  // communication: {
-  //   ita: ["comunicazione", "messaggio", "conversazione", "dialogo"],
-  //   eng: ["communication", "message", "conversation", "dialogue"],
-  //   spa: ["comunicación", "mensaje", "conversación", "diálogo"],
-  //   fra: ["communication", "message", "conversation", "dialogue"],
-  //   deu: ["Kommunikation", "Nachricht", "Gespräch", "Dialog"]
-  // },
-  // weather: {
-  //   ita: ["tempo", "pioggia", "sole", "vento"],
-  //   eng: ["weather", "rain", "sun", "wind"],
-  //   spa: ["clima", "lluvia", "sol", "viento"],
-  //   fra: ["temps", "pluie", "soleil", "vent"],
-  //   deu: ["Wetter", "Regen", "Sonne", "Wind"]
-  // },
-  // clothing: {
-  //   ita: ["vestiti", "maglietta", "pantaloni", "scarpe"],
-  //   eng: ["clothing", "t-shirt", "pants", "shoes"],
-  //   spa: ["ropa", "camiseta", "pantalones", "zapatos"],
-  //   fra: ["vêtements", "t-shirt", "pantalon", "chaussures"],
-  //   deu: ["Kleidung", "T-Shirt", "Hose", "Schuhe"]
-  // },
-  // family: {
-  //   ita: ["famiglia", "madre", "padre", "figlio"],
-  //   eng: ["family", "mother", "father", "son"],
-  //   spa: ["familia", "madre", "padre", "hijo"],
-  //   fra: ["famille", "mère", "père", "fils"],
-  //   deu: ["Familie", "Mutter", "Vater", "Sohn"]
-  // },
-  // time: {
-  //   ita: ["tempo", "giorno", "notte", "ora"],
-  //   eng: ["time", "day", "night", "hour"],
-  //   spa: ["tiempo", "día", "noche", "hora"],
-  //   fra: ["temps", "jour", "nuit", "heure"],
-  //   deu: ["Zeit", "Tag", "Nacht", "Stunde"]
-  // },
-  // shopping: {
-  //   ita: ["negozio", "prezzo", "acquisto", "vendita"],
-  //   eng: ["shop", "price", "purchase", "sale"],
-  //   spa: ["tienda", "precio", "compra", "venta"],
-  //   fra: ["magasin", "prix", "achat", "vente"],
-  //   deu: ["Geschäft", "Preis", "Kauf", "Verkauf"]
-  // },
-  // hobbies: {
-  //   ita: ["hobby", "lettura", "musica", "gioco"],
-  //   eng: ["hobby", "reading", "music", "game"],
-  //   spa: ["pasatiempo", "lectura", "música", "juego"],
-  //   fra: ["loisir", "lecture", "musique", "jeu"],
-  //   deu: ["Hobby", "Lesen", "Musik", "Spiel"]
-  // },
-  // transportation: {
-  //   ita: ["trasporto", "auto", "treno", "bicicletta"],
-  //   eng: ["transport", "car", "train", "bicycle"],
-  //   spa: ["transporte", "coche", "tren", "bicicleta"],
-  //   fra: ["transport", "voiture", "train", "vélo"],
-  //   deu: ["Transport", "Auto", "Zug", "Fahrrad"]
-  // },
-  // materials: {
-  //   ita: ["materiale", "legno", "metallo", "plastica"],
-  //   eng: ["material", "wood", "metal", "plastic"],
-  //   spa: ["material", "madera", "metal", "plástico"],
-  //   fra: ["matériau", "bois", "métal", "plastique"],
-  //   deu: ["Material", "Holz", "Metall", "Plastik"]
-  // },
-  // shapes: {
-  //   ita: ["forma", "cerchio", "quadrato", "triangolo"],
-  //   eng: ["shape", "circle", "square", "triangle"],
-  //   spa: ["forma", "círculo", "cuadrado", "triángulo"],
-  //   fra: ["forme", "cercle", "carré", "triangle"],
-  //   deu: ["Form", "Kreis", "Quadrat", "Dreieck"]
-  // },
-  // professions: {
-  //   ita: ["professione", "medico", "ingegnere", "insegnante"],
-  //   eng: ["profession", "doctor", "engineer", "teacher"],
-  //   spa: ["profesión", "médico", "ingeniero", "profesor"],
-  //   fra: ["profession", "médecin", "ingénieur", "professeur"],
-  //   deu: ["Beruf", "Arzt", "Ingenieur", "Lehrer"]
-  // },
-  // personality: {
-  //   ita: ["personalità", "gentile", "timido", "coraggioso"],
-  //   eng: ["personality", "kind", "shy", "brave"],
-  //   spa: ["personalidad", "amable", "tímido", "valiente"],
-  //   fra: ["personnalité", "gentil", "timide", "courageux"],
-  //   deu: ["Persönlichkeit", "freundlich", "schüchtern", "mutig"]
-  // },
 
+  summarization: {
+    it: ["riassunto", "sintesi", "abstract"],
+    en: ["summary", "overview", "abstract"],
+    es: ["resumen", "síntesis", "extracto"],
+    fr: ["résumé", "synthèse", "abrégé"],
+    du: ["Zusammenfassung", "Synthese", "Abstract"]
+  },
+
+  explanation: {
+    it: ["spiegazione", "descrizione", "definizione"],
+    en: ["explanation", "description", "definition"],
+    es: ["explicación", "descripción", "definición"],
+    fr: ["explication", "description", "définition"],
+    du: ["Erklärung", "Beschreibung", "Definition"]
+  },
+
+  data_analysis: {
+    it: ["analisi dati", "statistica", "grafico"],
+    en: ["data analysis", "statistics", "chart"],
+    es: ["análisis de datos", "estadística", "gráfico"],
+    fr: ["analyse de données", "statistiques", "graphique"],
+    du: ["Datenanalyse", "Statistik", "Diagramm"]
+  },
+
+  planning: {
+    it: ["pianificazione", "strategia", "obiettivo"],
+    en: ["planning", "strategy", "goal"],
+    es: ["planificación", "estrategia", "objetivo"],
+    fr: ["planification", "stratégie", "objectif"],
+    du: ["Planung", "Strategie", "Ziel"]
+  },
+
+  editing: {
+    it: ["modifica", "revisione", "correzione"],
+    en: ["editing", "revision", "correction"],
+    es: ["edición", "revisión", "corrección"],
+    fr: ["édition", "révision", "correction"],
+    du: ["Bearbeitung", "Überarbeitung", "Korrektur"]
+  },
+
+  directions: {
+    it: ["direzione", "sinistra", "destra"],
+    en: ["direction", "left", "right"],
+    es: ["dirección", "izquierda", "derecha"],
+    fr: ["direction", "gauche", "droite"],
+    du: ["Richtung", "links", "rechts"]
+  }
 };
 
 
