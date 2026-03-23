@@ -48,7 +48,35 @@ async function getOrCreateUserId() {
     const newUserId = generateRandomId(DEFAULT_USER_BYTES);
     // puts it in storage as a key-value pair
     await storageSet({ user_id: newUserId });
+    await createNewUser();
     return newUserId;
+    // // also create empty values for personal usage data here?
+}
+
+async function createNewUser() {
+    await storageSet({
+        total_co2_output_g: 0,
+        total_energy_consumption_wh: 0,
+        total_water_consumption_l: 0,
+        daily_co2_previous: 0,
+        daily_co2_current: 0,
+        weekly_co2_previous: 0,
+        weekly_co2_current: 0,
+        monthly_co2_previous: 0,
+        monthly_co2_current: 0,
+        daily_energy_previous: 0,
+        daily_energy_current: 0,
+        weekly_energy_previous: 0,
+        weekly_energy_current: 0,
+        monthly_energy_previous: 0,
+        monthly_energy_current: 0,
+        daily_water_previous: 0,
+        daily_water_current: 0,
+        weekly_water_previous: 0,
+        weekly_water_current: 0,
+        monthly_water_previous: 0,
+        monthly_water_current: 0,
+    })
 }
 
 async function getOrCreateApiKey() {
@@ -152,25 +180,34 @@ async function getTimeSinceLastPrompt() {
 // =========================
 //  HMAC SIGNING
 // =========================
-async function computeHMAC(payloadString, key = SECRET_KEY) {
-    const encoder = new TextEncoder();
-    const cryptoKey = await crypto.subtle.importKey(
-        // the key we are importing is raw/not encoded
-        "raw",
-        // now we pass our key into the encoder
-        encoder.encode(key),
-        // specify the algorithm (HMAC) and protocol (SHA-256)
-        // they need to be this way to correspond with the backend
-        { name: "HMAC", hash: "SHA-256" },
-        // false= cannot be exported (secure)
-        false,
-        // the key can only sign, not verify
-        ["sign"]
-    );
-    // we then sign the payload with "HMAC" and our secret key encode our payload to bytes
-    const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(payloadString));
-    // then turn the whole signature into a 64-char hex signature
-    return [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, "0")).join("");
+// async function computeHMAC(payloadString, key = SECRET_KEY) {
+//     const encoder = new TextEncoder();
+//     const cryptoKey = await crypto.subtle.importKey(
+//         // the key we are importing is raw/not encoded
+//         "raw",
+//         // now we pass our key into the encoder
+//         encoder.encode(key),
+//         // specify the algorithm (HMAC) and protocol (SHA-256)
+//         // they need to be this way to correspond with the backend
+//         { name: "HMAC", hash: "SHA-256" },
+//         // false= cannot be exported (secure)
+//         false,
+//         // the key can only sign, not verify
+//         ["sign"]
+//     );
+//     // we then sign the payload with "HMAC" and our secret key encode our payload to bytes
+//     const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(payloadString));
+//     // then turn the whole signature into a 64-char hex signature
+//     return [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, "0")).join("");
+// }
+async function setOrUpdateUsageData(payload) {
+    const result = await storageGet(['total_co2_output_g', 'total_energy_consumption_wh', 'total_water_consumption_l']);
+
+    await storageSet({
+        total_co2_output_g: result.total_co2_output_g + payload.prompt.co2_g,
+        total_energy_consumption_wh: result.total_energy_consumption_wh + payload.prompt.energy_wh,
+        total_water_consumption_l: result.total_water_consumption_l + payload.prompt.water_l
+    });
 }
 
 // =========================
@@ -243,7 +280,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             case "PROMPT_EVENT": {
                 try {
                     const apiKey = await getOrCreateApiKey();
-
+                    console.log(msg.payload)
+                    await setOrUpdateUsageData(msg.payload);
                     const res = await fetch("https://dev.madebyshu.net/events", {
                         method: "POST",
                         headers: {

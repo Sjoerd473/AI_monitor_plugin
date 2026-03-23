@@ -1,20 +1,17 @@
-// Apprezzo molto che hai scritto questo già nel formato RegEx, ma per la consistenza
-// del codice è meglio tenere tutto uniformo, quindi:
-// it: [parole],
-// en: [parole] ecc ecc.
-// ugale agli altri dizionari.
 
 
-// quale dei due va bene?
-const LANG_KEYWORDS =  {
-  it: [["ciao"], ["per favore"], ["grazie"], ["salve"], ["buongiorno"], ["buonasera"], ["prego"], ["scusa"], ["sì"], ["no"], ["aiuto"]],
-  en: [["hello"], ["please"], ["thank"], ["hi"], ["thanks"], ["welcome"], ["goodbye"], ["sorry"], ["yes"], ["no"], ["help"]],
-  es: [["hola"], ["por favor"], ["gracias"], ["buenos días"], ["de nada"], ["adiós"], ["lo siento"], ["sí"], ["no"], ["ayuda"]],
-  fr: [["bonjour"], ["s'il vous plaît"], ["merci"], ["salut"], ["de rien"], ["au revoir"], ["pardon"], ["oui"], ["non"], ["aide"]],
-  de: [["hallo"], ["bitte"], ["danke"], ["guten tag"], ["gern geschehen"], ["tschüss"], ["entschuldigung"], ["ja"], ["nein"], ["hilfe"]]
-};
+// // quale dei due va bene?
+// const LANG_KEYWORDS =  {
+//   it: [["ciao"], ["per favore"], ["grazie"], ["salve"], ["buongiorno"], ["buonasera"], ["prego"], ["scusa"], ["sì"], ["no"], ["aiuto"]],
+//   en: [["hello"], ["please"], ["thank"], ["hi"], ["thanks"], ["welcome"], ["goodbye"], ["sorry"], ["yes"], ["no"], ["help"]],
+//   es: [["hola"], ["por favor"], ["gracias"], ["buenos días"], ["de nada"], ["adiós"], ["lo siento"], ["sí"], ["no"], ["ayuda"]],
+//   fr: [["bonjour"], ["s'il vous plaît"], ["merci"], ["salut"], ["de rien"], ["au revoir"], ["pardon"], ["oui"], ["non"], ["aide"]],
+//   de: [["hallo"], ["bitte"], ["danke"], ["guten tag"], ["gern geschehen"], ["tschüss"], ["entschuldigung"], ["ja"], ["nein"], ["hilfe"]]
+// };
 
-//const LANG_KEYWORDS = {
+
+// questo va bene
+const LANG_KEYWORDS = {
   it: ["ciao", "per favore", "grazie", "salve", "buongiorno", "buonasera", "prego", "scusa", "sì", "no", "aiuto"],
   en: ["hello", "please", "thank", "hi", "thanks", "welcome", "goodbye", "sorry", "yes", "no", "help"],
   es: ["hola", "por favor", "gracias", "buenos días", "de nada", "adiós", "lo siento", "sí", "no", "ayuda"],
@@ -36,7 +33,7 @@ const LANG_KEYWORDS =  {
 const PROMPT_KEYWORDS = {
   creative_writing: {
     it: ["scrittura creativa", "racconto", "narrazione"],
-    en: [//"creative writing", "story", "narrative"],
+    en: ["creative writing", "story", "narrative"],
     es: ["escritura creativa", "cuento", "narrativa"],
     fr: ["écriture créative", "récit", "conte"],
     du: ["kreatives Schreiben", "Geschichte", "Erzählung"]
@@ -60,7 +57,7 @@ const PROMPT_KEYWORDS = {
 
   data_analysis: {
     it: ["analisi dati", "statistica", "grafico"],
-    en: [//"data analysis", "statistics", "chart"],
+    en: ["data analysis", "statistics", "chart"],
     es: ["análisis de datos", "estadística", "gráfico"],
     fr: ["analyse de données", "statistiques", "graphique"],
     du: ["Datenanalyse", "Statistik", "Diagramm"]
