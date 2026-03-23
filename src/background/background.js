@@ -6,7 +6,7 @@
 const SESSION_TIMEOUT = 10 * 60 * 1000; // 10 min
 const DEFAULT_SESSION_BYTES = 16;
 const DEFAULT_USER_BYTES = 32;
-const SECRET_KEY = "super_secret_key_here";
+
 
 // =========================
 //  STORAGE HELPERS
@@ -54,10 +54,19 @@ async function getOrCreateUserId() {
 }
 
 async function createNewUser() {
+    const now = new Date()
+
+    const thisDay = now.toISOString().slice(0, 10);
+    const thisWeek = getISOWeek(now);
+    const thisMonth = now.toISOString().slice(0, 7);
+
     await storageSet({
         total_co2_output_g: 0,
         total_energy_consumption_wh: 0,
         total_water_consumption_l: 0,
+        current_day: thisDay,
+        current_week: thisWeek,
+        current_month: thisMonth,
         daily_co2_previous: 0,
         daily_co2_current: 0,
         weekly_co2_previous: 0,
@@ -77,6 +86,15 @@ async function createNewUser() {
         monthly_water_previous: 0,
         monthly_water_current: 0,
     })
+}
+
+function getISOWeek(date) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+    const week1 = new Date(d.getFullYear(), 0, 4);
+    const weekNum = 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
 
 async function getOrCreateApiKey() {
@@ -201,12 +219,61 @@ async function getTimeSinceLastPrompt() {
 //     return [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, "0")).join("");
 // }
 async function setOrUpdateUsageData(payload) {
-    const result = await storageGet(['total_co2_output_g', 'total_energy_consumption_wh', 'total_water_consumption_l']);
+    const result = await storageGet([
+        'current_day', 'current_week', 'current_month',
+        'total_co2_output_g', 'total_energy_consumption_wh', 'total_water_consumption_l',
+        'daily_co2_previous', 'daily_co2_current',
+        'weekly_co2_previous', 'weekly_co2_current',
+        'monthly_co2_previous', 'monthly_co2_current',
+        'daily_energy_previous', 'daily_energy_current',
+        'weekly_energy_previous', 'weekly_energy_current',
+        'monthly_energy_previous', 'monthly_energy_current',
+        'daily_water_previous', 'daily_water_current',
+        'weekly_water_previous', 'weekly_water_current',
+        'monthly_water_previous', 'monthly_water_current',
+    ]);
+    const now = new Date()
+
+
+
+
+
+    const thisDay = now.toISOString().slice(0, 10);
+    const thisWeek = getISOWeek(now);
+    const thisMonth = now.toISOString().slice(0, 7);
+
+    const dayReset = result.current_day !== thisDay;
+    const weekReset = result.current_week !== thisWeek;
+    const monthReset = result.current_month !== thisMonth;
 
     await storageSet({
+        current_day: thisDay,
+        current_week: thisWeek,
+        current_month: thisMonth,
         total_co2_output_g: result.total_co2_output_g + payload.prompt.co2_g,
         total_energy_consumption_wh: result.total_energy_consumption_wh + payload.prompt.energy_wh,
-        total_water_consumption_l: result.total_water_consumption_l + payload.prompt.water_l
+        total_water_consumption_l: result.total_water_consumption_l + payload.prompt.water_l,
+
+        daily_co2_previous: dayReset ? result.daily_co2_current : result.daily_co2_previous,
+        daily_co2_current: (dayReset ? 0 : result.daily_co2_current) + payload.prompt.co2_g,
+        weekly_co2_previous: weekReset ? result.weekly_co2_current : result.weekly_co2_previous,
+        weekly_co2_current: (weekReset ? 0 : result.weekly_co2_current) + payload.prompt.co2_g,
+        monthly_co2_previous: monthReset ? result.monthly_co2_current : result.monthly_co2_previous,
+        monthly_co2_current: (monthReset ? 0 : result.monthly_co2_current) + payload.prompt.co2_g,
+
+        daily_energy_previous: dayReset ? result.daily_energy_current : result.daily_energy_previous,
+        daily_energy_current: (dayReset ? 0 : result.daily_energy_current) + payload.prompt.energy_wh,
+        weekly_energy_previous: weekReset ? result.weekly_energy_current : result.weekly_energy_previous,
+        weekly_energy_current: (weekReset ? 0 : result.weekly_energy_current) + payload.prompt.energy_wh,
+        monthly_energy_previous: monthReset ? result.monthly_energy_current : result.monthly_energy_previous,
+        monthly_energy_current: (monthReset ? 0 : result.monthly_energy_current) + payload.prompt.energy_wh,
+
+        daily_water_previous: dayReset ? result.daily_water_current : result.daily_water_previous,
+        daily_water_current: (dayReset ? 0 : result.daily_water_current) + payload.prompt.water_l,
+        weekly_water_previous: weekReset ? result.weekly_water_current : result.weekly_water_previous,
+        weekly_water_current: (weekReset ? 0 : result.weekly_water_current) + payload.prompt.water_l,
+        monthly_water_previous: monthReset ? result.monthly_water_current : result.monthly_water_previous,
+        monthly_water_current: (monthReset ? 0 : result.monthly_water_current) + payload.prompt.water_l,
     });
 }
 

@@ -291,6 +291,7 @@ const CATEGORY_KEYWORDS = {
 
 
 // Safety_keywords è per filtrare le diverse categorie illegale.
+// da eliminare ovunque
 const SAFETY_KEYWORDS = {}
 
 export { PROMPT_KEYWORDS, CATEGORY_KEYWORDS, LANG_KEYWORDS, SAFETY_KEYWORDS }
