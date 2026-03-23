@@ -3,7 +3,7 @@
 // =========================
 
 // global settings for session lifetime and ID lengths
-const SESSION_TIMEOUT = 10 * 60 * 1000; // 10 min
+const SESSION_TIMEOUT = 20 * 60 * 1000; // 20 min
 const DEFAULT_SESSION_BYTES = 16;
 const DEFAULT_USER_BYTES = 32;
 
@@ -150,7 +150,6 @@ async function getOrCreateSessionId() {
         // we arrive here if the session exists, so we update the timestamp
         await storageSet({
             session_last_active: now,
-            session_prompt_count: 0
         });
     }
     // and then return the sessionId in any case (a new one or an old one)

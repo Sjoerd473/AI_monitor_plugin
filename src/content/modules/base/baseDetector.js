@@ -305,7 +305,7 @@ export class baseDetector extends Parser {
             const promptType = this.classifyPrompt(text);
             const promptLanguage = this.detectLanguage(text);
             const promptDomain = this.detectDomain(text);
-            const safetyCategory = this.classifySafety(text);
+         
 
             const messageIndex = this.getUserMessageIndex(this.userMessagesSelector);
             const conversationLength = this.getConversationLength(this.allMessagesSelector);
@@ -361,7 +361,6 @@ export class baseDetector extends Parser {
                         is_followup: isFollowup,
                         message_index: messageIndex,
                         conversation_length: conversationLength,
-                        safety_category: safetyCategory,
                         timestamp: new Date().toISOString(),
                         energy_wh: energy,
                         co2_g: co2,

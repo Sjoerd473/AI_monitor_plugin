@@ -1,4 +1,4 @@
-import { CATEGORY_KEYWORDS, LANG_KEYWORDS, PROMPT_KEYWORDS, SAFETY_KEYWORDS } from "./maps";
+import { CATEGORY_KEYWORDS, LANG_KEYWORDS, PROMPT_KEYWORDS} from "./maps";
 
 
 export class Parser {
@@ -182,13 +182,7 @@ export class Parser {
         return 'general'
     }
 
-    classifySafety(text) {
-        const safetyMap = this.regexConverter(SAFETY_KEYWORDS)
-        for (const [safety, regex] of safetyMap) {
-            if (regex.test(text)) return safety
-        }
-        return 'safe'
-    }
+ 
 
     calcolateViewport(viewportWidth) {
         if (viewportWidth >= 1000) {
