@@ -1,4 +1,4 @@
-import { CATEGORY_KEYWORDS, LANG_KEYWORDS, PROMPT_KEYWORDS} from "./maps";
+import { CATEGORY_KEYWORDS, LANG_KEYWORDS, PROMPT_KEYWORDS } from "./maps";
 
 
 export class Parser {
@@ -113,7 +113,7 @@ export class Parser {
         return lower || null;
     }
 
-       // Usage: detect send (e.g., on button click/input), then watch
+    // Usage: detect send (e.g., on button click/input), then watch
     //// I don't think this works, given that the url never contains code or chat
     detectModelMode() {
         const url = location.pathname;
@@ -122,22 +122,33 @@ export class Parser {
         return 'standard';
     }
 
-      // generate a conversationID
-    getConversationId() {
+    // generate a conversationID
+    async getConversationId() {
         // First, check for query parameter (backward compatibility)
         const urlParams = new URLSearchParams(location.search);
         let convId = urlParams.get('conversationId');
 
         // If not found, extract from path: /c/<uuid> using regex
         if (!convId) {
-            const pathMatch = location.pathname.match(/^\/c\/([a-f0-9\-]+)$/);
+            const pathMatch = location.pathname.match(this.regexConvId);
             if (pathMatch) {
                 // pathMatch[0] would include the /c/ at the start
-                convId = pathMatch[1];
+                convId = await this.hashString(pathMatch[1]);
             }
         }
 
-        return convId || 'unknown';
+        return  convId || 'unknown';
+    }
+
+    async hashString(inputString) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(inputString);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+
+        return hashHex;
     }
 
     regexConverter(obj) {
@@ -182,7 +193,7 @@ export class Parser {
         return 'general'
     }
 
- 
+
 
     calcolateViewport(viewportWidth) {
         if (viewportWidth >= 1000) {

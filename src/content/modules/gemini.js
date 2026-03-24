@@ -47,6 +47,8 @@ export class geminiDetector extends baseDetector {
             'button[aria-label*="Retry message"]'
         ];
 
+        this.regexConvId = /^\/app\/([a-f0-9\-]+)$/
+
         this.suggestedPromptSelectors = [
             'button[class*="suggest"]',
             '.intent-card button',

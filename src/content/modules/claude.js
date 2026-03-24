@@ -66,6 +66,8 @@ export class claudeDetector extends baseDetector {
             'button[aria-label*="Regenerate"]'
         ];
 
+        this.regexConvId = /^\/chat\/([a-f0-9\-]+)$/
+
         // =========================
         // SUGGESTED PROMPTS
         // =========================

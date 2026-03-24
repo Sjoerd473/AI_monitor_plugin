@@ -47,6 +47,8 @@ export class chatGPTDetector extends baseDetector {
             'button[aria-label*="regenerate"]'
         ]
 
+        this.regexConvId = /^\/c\/([a-f0-9\-]+)$/
+
 
         this.suggestedPromptSelectors = [
             '[data-testid="accept-prompt"]',

@@ -293,19 +293,19 @@ export class baseDetector extends Parser {
         console.log("[AI Usage Meter] Processing prompt", text);
 
         // Wait for model detection BEFORE building event
-        this.watchForModelUpdate((model) => {
+        this.watchForModelUpdate(async (model) => {
 
             console.log("[AI Usage Meter] Using model:", model);
 
             const tokensIn = this.estimateTokens(text);
-            const conversationId = this.getConversationId();
+            const conversationId = await this.getConversationId();
             const promptStartTime = performance.now();
 
             const modelMode = this.detectModelMode();
             const promptType = this.classifyPrompt(text);
             const promptLanguage = this.detectLanguage(text);
             const promptDomain = this.detectDomain(text);
-         
+
 
             const messageIndex = this.getUserMessageIndex(this.userMessagesSelector);
             const conversationLength = this.getConversationLength(this.allMessagesSelector);
@@ -338,8 +338,8 @@ export class baseDetector extends Parser {
                 const latencyMs = performance.now() - promptStartTime;
                 const [energy, co2, water] = computeEnvironmentalImpact(
                     tokensIn, tokensOut, latencyMs, streamingDurationMs, model,
-                     modelMode, promptType, promptDomain, promptLanguage,
-                      conversationLength, isFollowup, uiSignals
+                    modelMode, promptType, promptDomain, promptLanguage,
+                    conversationLength, isFollowup, uiSignals
                 )
 
                 const event = {

@@ -57,6 +57,8 @@ export class perplexityDetector extends baseDetector {
             'button[aria-label*="retry"]'
         ];
 
+        this.regexConvId = /^\/search\/([a-f0-9\-]+)$/
+
 
         this.suggestedPromptSelectors = [
             'button[class*="suggest"]',
