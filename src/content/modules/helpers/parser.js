@@ -271,7 +271,7 @@ export class Parser {
         // Viewport and timezone
         //// viewport needs to be converted to a string of mobile/tablet/desktop
         // const viewport = `${window.innerWidth}x${window.innerHeight}`;
-        const viewport = this.calcolateViewport(window.innerWidth)
+        const viewport = this.calculateViewport(window.innerWidth)
         //// timezone is currently a number, needs to be converted to a region EU/US/ASIA based on the number
         const timezone = -new Date().getTimezoneOffset(); // convert to positive offset
 

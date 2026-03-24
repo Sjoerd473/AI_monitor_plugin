@@ -3,12 +3,13 @@ import { baseDetector } from "./baseDetector";
 export class chatGPTDetector extends baseDetector {
 
     constructor() {
-        super();
+         super({
+            editorSelector: "#prompt-textarea",
+            chatContainerSelector: "main",
+            sendButton: '[data-testid="send-button"]'
+        });
 
-        this.editorSelector = "#prompt-textarea";
-        this.chatContainerSelector = "main";
-
-        this.sendButton = '[data-testid="send-button"]';
+       
 
         this.lastAssistantMessageSelectors = [
             '[data-message-author-role="assistant"]:last-child [data-message-preview]',

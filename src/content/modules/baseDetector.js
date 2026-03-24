@@ -2,8 +2,13 @@ import { computeEnvironmentalImpact } from "./helpers/energyCalc";
 import { Parser } from "./helpers/parser";
 
 export class baseDetector extends Parser {
-    constructor() {
+    constructor(config = {}) {
         super();
+        
+        this.editorSelector = config.editorSelector || null;
+        this.chatContainerSelector = config.chatContainerSelector || null;
+        this.sendButton = config.sendButton || null;
+
         // initialized as null first
         this.userId = null;
         this.sessionId = null;
@@ -12,9 +17,7 @@ export class baseDetector extends Parser {
         this.timeSinceLastPrompt = null;
         this.extensionVersion = null;
 
-        this.editorSelector = null;  // ← ADD THESE
-        this.chatContainerSelector = null;
-        this.sendButton = null;
+       
 
         this.lastRegenerateUsed = false;
         this.lastSuggestedPromptUsed = false;

@@ -3,7 +3,11 @@ import { baseDetector } from "./baseDetector";
 export class perplexityDetector extends baseDetector {
 
     constructor() {
-        super();
+        super({
+            editorSelector: '#ask-input',
+            chatContainerSelector: 'main',
+            sendButton: 'button[aria-label="Submit"]'
+        });
 
         this.editorSelector = '#ask-input';
         this.chatContainerSelector = 'main';

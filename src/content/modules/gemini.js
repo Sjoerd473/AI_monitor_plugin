@@ -3,12 +3,16 @@ import { baseDetector } from "./baseDetector";
 export class geminiDetector extends baseDetector {
 
     constructor() {
-        super();
+         super({
+            editorSelector: '.ql-editor[contenteditable="true"]',
+            chatContainerSelector: '.chat-history-scroll-container',
+            sendButton: 'button[aria-label="Send message"]'
+        });
 
-        this.editorSelector = '.ql-editor[contenteditable="true"]';
-        this.chatContainerSelector = '.chat-history-scroll-container';
+        // this.editorSelector = '.ql-editor[contenteditable="true"]';
+        // this.chatContainerSelector = '.chat-history-scroll-container';
 
-        this.sendButton = 'button[aria-label="Send message"]';
+        // this.sendButton = 'button[aria-label="Send message"]';
 
         this.lastAssistantMessageSelectors = [
             'response-container',

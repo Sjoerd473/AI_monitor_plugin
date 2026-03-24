@@ -3,7 +3,14 @@ import { baseDetector } from "./baseDetector";
 export class claudeDetector extends baseDetector {
 
     constructor() {
-        super();
+        super({
+            editorSelector: '[data-testid="chat-input"][contenteditable="true"]',
+            chatContainerSelector: [
+                '[data-testid="chat-input"]',
+                '#root'
+            ],
+            sendButton: 'button[aria-label="Send message"]'
+        });
 
         // Add to claudeDetector constructor
         this.observeNavigation();
