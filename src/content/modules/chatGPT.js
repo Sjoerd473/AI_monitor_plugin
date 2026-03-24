@@ -1,4 +1,4 @@
-import { baseDetector } from "./base/baseDetector";
+import { baseDetector } from "./baseDetector";
 
 export class chatGPTDetector extends baseDetector {
 

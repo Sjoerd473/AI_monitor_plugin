@@ -137,7 +137,7 @@ export class Parser {
             }
         }
 
-        return  convId || 'unknown';
+        return convId || 'unknown';
     }
 
     async hashString(inputString) {
@@ -195,7 +195,7 @@ export class Parser {
 
 
 
-    calcolateViewport(viewportWidth) {
+    calculateViewport(viewportWidth) {
         if (viewportWidth >= 1000) {
             return 'desktop'
         } else if (viewportWidth >= 600) {
