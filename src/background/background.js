@@ -279,31 +279,7 @@ async function setOrUpdateUsageData(payload) {
 // =========================
 //  DATASET DOWNLOAD
 // =========================
-async function downloadDataset() {
-    const apiKey = await getOrCreateApiKey();
 
-    const res = await fetch("https://dev.madebyshu.net/download/dataset", {
-        headers: { "Authorization": `Bearer ${apiKey}` }
-    });
-
-    if (res.status === 429) {
-        console.warn("[AI Usage Meter] Already downloaded today");
-        return { status: "rate_limited" };
-    }
-
-    if (!res.ok) {
-        console.error("[AI Usage Meter] Download failed:", res.status);
-        return { status: "error", code: res.status };
-    }
-
-    // convert to base64 data URL instead of createObjectURL
-    const buffer = await res.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-    const dataUrl = `data:application/zip;base64,${base64}`;
-
-    chrome.downloads.download({ url: dataUrl, filename: "AI_monitor_dataset.zip" });
-    return { status: "ok" };
-}
 
 // =========================
 //  MESSAGE HANDLER
@@ -366,11 +342,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 break;
             }
 
-            case "DOWNLOAD_DATASET": {
-                const result = await downloadDataset();
-                sendResponse(result);
-                break;
-            }
+          
 
             default:
                 break;
