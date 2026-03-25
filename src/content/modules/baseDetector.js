@@ -4,7 +4,7 @@ import { Parser } from "./helpers/parser";
 export class baseDetector extends Parser {
     constructor(config = {}) {
         super();
-        
+
         this.editorSelector = config.editorSelector || null;
         this.chatContainerSelector = config.chatContainerSelector || null;
         this.sendButton = config.sendButton || null;
@@ -17,7 +17,7 @@ export class baseDetector extends Parser {
         this.timeSinceLastPrompt = null;
         this.extensionVersion = null;
 
-       
+
 
         this.lastRegenerateUsed = false;
         this.lastSuggestedPromptUsed = false;
@@ -338,11 +338,12 @@ export class baseDetector extends Parser {
             // 🔁 Track streaming response
             this.trackResponse(chatContainer, promptStartTime, (response, streamingDurationMs) => {
                 const tokensOut = this.estimateTokens(response)
+                const environment = this.getClientEnvironment()
                 const latencyMs = performance.now() - promptStartTime;
                 const [energy, co2, water] = computeEnvironmentalImpact(
                     tokensIn, tokensOut, latencyMs, streamingDurationMs, model,
                     modelMode, promptType, promptDomain, promptLanguage,
-                    conversationLength, isFollowup, uiSignals
+                    conversationLength, isFollowup, uiSignals, environment.region
                 )
 
                 const event = {
@@ -384,7 +385,7 @@ export class baseDetector extends Parser {
 
                     ui_interaction: uiSignals,
 
-                    environment: this.getClientEnvironment(),
+                    environment: environment,
 
                     source: this.source,
 

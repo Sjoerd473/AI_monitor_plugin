@@ -14,10 +14,13 @@ export const REGION_REGISTRY = {
 };
 
 export const PROMPT_TYPE_MULTIPLIER = {
-    "creative-writing": 1.1,
+    "creative_writing": 1.1,
     "explanation": 1.05,
     "summarization": 0.85,
-    "pricing": 1.0,
+    "data_analysis": 1.15,  // heavier reasoning
+    "planning": 1.05,       // structured multi-step output
+    "editing": 1.0,
+    "directions": 0.9,      // typically short, simple output
     "general": 1.0,
 };
 
@@ -26,14 +29,16 @@ export const DOMAIN_MULTIPLIER = {
     finance: 1.20,
     health: 1.10,
     sports: 1.0,
-    politics: 1.0,
-    culture: 1.0,
-    climate: 1.0,
-    coding: 1.0,
-    education: 1.0,
-    science: 1.0,
-    history: 1.0,
-    philosophy: 1.0,
+    politics: 1.05,       // nuanced, often lengthy responses
+    coding: 1.15,         // code generation is token-heavy
+    ai: 1.10,             // technical depth
+    cybersecurity: 1.15,  // technical + detailed explanations
+    gaming: 1.0,
+    education: 1.05,      // structured explanations
+    science: 1.10,        // technical depth
+    history: 1.05,        // often detailed narratives
+    philosophy: 1.05,     // dense reasoning
+    psychology: 1.05,     // nuanced explanations
     travel: 1.0,
     food: 1.0,
     fashion: 1.0,
@@ -41,19 +46,19 @@ export const DOMAIN_MULTIPLIER = {
     self_improvement: 1.0,
     art: 1.0,
     music: 1.0,
-    writing: 1.0,
+    writing: 1.05,        // meta-writing tasks tend to be verbose
     film: 1.0,
-    gaming: 1.0,
-    ai: 1.0,
-    cybersecurity: 1.0,
-    law: 1.0,
-    sustainability: 1.0,
+    law: 1.20,            // dense, precise, lengthy outputs
+    sustainability: 1.05, // cross-domain complexity
     general: 1.0,
 };
 
 export const LANGUAGE_MULTIPLIER = {
     en: 1.0,
-    it: 1.0,
+    it: 1.08,
+    es: 1.07,
+    fr: 1.09,
+    de: 1.12,  // German compounds tokenize particularly poorly
 };
 
 export const UI_MULTIPLIER = {

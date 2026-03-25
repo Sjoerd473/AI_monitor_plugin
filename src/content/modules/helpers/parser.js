@@ -238,6 +238,19 @@ export class Parser {
         return !!document.querySelector(selector);
     }
 
+    getRegion(timezone) {
+        const tzh = timezone / 60
+        if (tzh >= -9 && tzh <= -2) {
+            return 'US'
+        } else if (tzh >= -1 && tzh <= 2) {
+            return 'EU'
+        } else if (tzh >= 3) {
+            return 'ASIA'
+        } else {
+            return 'EU'
+        }
+    }
+
     getClientEnvironment() {
         const ua = navigator.userAgent;
         let browser = "unknown";
@@ -274,6 +287,8 @@ export class Parser {
         const viewport = this.calculateViewport(window.innerWidth)
         //// timezone is currently a number, needs to be converted to a region EU/US/ASIA based on the number
         const timezone = -new Date().getTimezoneOffset(); // convert to positive offset
+        const region = this.getRegion(timezone)
+
 
         return {
             browser,
@@ -281,6 +296,7 @@ export class Parser {
             os,
             viewport,
             timezone,
+            region,
             plugin_version: this.extensionVersion || "unknown"
         };
     }
