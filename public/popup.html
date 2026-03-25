@@ -1,17 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <meta charset="utf-8">
-    <style>
-
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI monitor</title>
+    <link rel="stylesheet" href="popup.css">
 </head>
 
 <body>
-    <p>hello world</p>
+    <div class="container">
+        <h1>Your impact</h1>
+        <div class="buttons">
+            <button id="daily-btn" class="active">Daily</button>
+            <button id="weekly-btn">Weekly</button>
+            <button id="monthly-btn">Monthly</button>
+            <button id="total-btn">Total</button>
+        </div>
+        <div class="grid">
+            <div class="col">
+                <p>Output </p>
+                <p>Co2</p>
+                <p>Energy</p>
+                <p>Water</p>
+            </div>
+            <div class="col previous">
+                <p>Previous</p>
+                <p>100</p>
+                <p>20</p>
+                <p>10</p>
+            </div>
+            <div class="col current">
+                <p>Current</p>
+                <p>90</p>
+                <p>120</p>
+                <p>55</p>
+            </div>
+        </div>
+        <p class="example">
+            <span class="time-unit">
+                Last week
+            </span> you <span class="total-only"></span>  <span class="energy-unit"></span> <span
+                class="energy-unit">do something or other</span>
+        </p>
+        <p class="comparison"><span class="time-unit">This week</span> you have consumed <span class="comp-phrase"> more
+                or less than last week</span> </p>
+    </div>
 
-    <script src="popup.js"></script>
+
 </body>
+<script src="popup.js"></script>
 
 </html>
