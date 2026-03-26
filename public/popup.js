@@ -1,310 +1,208 @@
-const clamp = (
-    value,
-    min = 0,
-    max = 1
-) => {
-    if (min > max) {
-        [min, max] = [max, min];
-    }
-
-    return Math.max(min, Math.min(max, value));
-};
-
-const normalize = (
-    number,
-    currentScaleMin,
-    currentScaleMax,
-    newScaleMin = 0,
-    newScaleMax = 1
-) => {
-    const standardNormalization =
-        (number - currentScaleMin) / (currentScaleMax - currentScaleMin);
-
-    return (newScaleMax - newScaleMin) * standardNormalization + newScaleMin;
-};
-
-const clampedNormalize = (
-    value,
-    currentScaleMin,
-    currentScaleMax,
-    newScaleMin = 0,
-    newScaleMax = 1
-) => {
-    return clamp(
-        normalize(
-            value,
-            currentScaleMin,
-            currentScaleMax,
-            newScaleMin,
-            newScaleMax
-        ),
-        newScaleMin,
-        newScaleMax
-    );
-};
-
-function getDistanceBetweenPoints(p1, p2) {
-    const deltaX = p1.x - p2.x;
-    const deltaY = p1.y - p2.y;
-
-    return Math.sqrt(deltaX ** 2 + deltaY ** 2);
+// =========================
+//  STORAGE
+// =========================
+async function storageGet(keys) {
+    return new Promise(resolve => chrome.storage.local.get(keys, resolve));
 }
 
-const convertDegreesToRadians = (angle) =>
-    (angle * Math.PI) / 180;
-const convertRadiansToDegrees = (angle) =>
-    (angle * 180) / Math.PI;
-
-const convertPolarToCartesian = (angle, distance) => {
-    const angleInRadians = convertDegreesToRadians(angle);
-
-    const x = Math.cos(angleInRadians) * distance;
-    const y = Math.sin(angleInRadians) * distance;
-
-    return [x, y];
+// =========================
+//  COMPARISONS
+// =========================
+const comparisons = {
+    co2: [
+        {
+            label: 'driving by car',
+            convert: g => `${Math.round(g / 120 * 1000)}m`,
+        },
+        {
+            label: 'a lightbulb on',
+            convert: g => formatTime(g / 5 * 3600),
+        },
+        {
+            label: 'a kettle boiling',
+            convert: g => formatTime(g / (3000 / 1000 * 233 / 3600)),
+        },
+    ],
+    energy: [
+        {
+            label: 'charging your phone',
+            convert: wh => formatTime(wh / 15 * 3600),
+        },
+        {
+            label: 'running a desk fan',
+            convert: wh => formatTime(wh / 25 * 3600),
+        },
+        {
+            label: 'an LED bulb on',
+            convert: wh => formatTime(wh / 8 * 3600),
+        },
+    ],
+    water: [
+        {
+            label: 'a running shower',
+            convert: ml => formatTime(ml / 80),
+        },
+        {
+            label: 'a dripping tap',
+            convert: ml => formatTime(ml / 1),
+        },
+        {
+            label: 'toilet flushes',
+            convert: ml => `${(ml / 6000).toFixed(2)} flushes`,
+        },
+    ],
 };
 
-const convertCartesianToPolar = (x, y) => {
-    let angle = convertRadiansToDegrees(Math.atan2(y, x));
-
-    if (angle < 0) {
-        angle += 360;
-    }
-
-    const distance = Math.sqrt(x ** 2 + y ** 2);
-
-    return [angle, distance];
+const totalComparisons = {
+    co2: {
+        label: 'km by car',
+        convert: g => (g / 120).toFixed(2),
+    },
+    energy: {
+        label: 'phone charges',
+        convert: wh => (wh / 15).toFixed(1),
+    },
+    water: {
+        label: 'water bottles (500ml)',
+        convert: l => (l * 1000 / 500).toFixed(1),
+    },
 };
 
-
-// --- DOM ---
-
-const btns = document.querySelectorAll('.buttons button');
-const prevCells = Array.from(document.querySelectorAll('.previous p')).slice(1);
-const currCells = Array.from(document.querySelectorAll('.current p')).slice(1);
-const timeUnitSpans = document.querySelectorAll('.time-unit');
-const energyUnitSpans = document.querySelectorAll('.energy-unit');
-const compPhrase = document.querySelector('.comp-phrase');
-const totalOnly = document.querySelector('.total-only');
-const compPhraseCont = document.querySelector('.comparison')
-
-
-const KEYS = [
-    'daily_co2_previous', 'daily_co2_current',
-    'daily_energy_previous', 'daily_energy_current',
-    'daily_water_previous', 'daily_water_current',
-    'weekly_co2_previous', 'weekly_co2_current',
-    'weekly_energy_previous', 'weekly_energy_current',
-    'weekly_water_previous', 'weekly_water_current',
-    'monthly_co2_previous', 'monthly_co2_current',
-    'monthly_energy_previous', 'monthly_energy_current',
-    'monthly_water_previous', 'monthly_water_current',
-    'total_co2_output_g',
-    'total_energy_consumption_wh',
-    'total_water_consumption_l',
-];
-
-const TYPES = ['co2', 'energy', 'water']
-
-
-// --- Grading ---
-
-function cellGrader(prevArr, currArr, mode = null) {
-    const prev = Number(prevArr[0].innerHTML.slice(0, -1));
-    const curr = Number(currArr[0].innerHTML.slice(0, -1));
-    const diff = ((curr - prev) / prev) * 100;
-
-    currCells.forEach(cell => {
-        cell.classList.remove('positive', 'negative');
-        if (mode) {
-            return;
-        }
-        else if (diff < 0) {
-            const clampedDiff = clampedNormalize(diff, 0, -100, 0, 100);
-            cell.style.setProperty('--brightness', clampedDiff + '%');
-            cell.classList.add('positive');
-        } else {
-            const clampedDiff = clampedNormalize(diff, 0, 100, 0, 100);
-            cell.style.setProperty('--brightness', clampedDiff + '%');
-            cell.classList.add('negative');
-        }
-    });
+function getExample(type, value) {
+    const list = comparisons[type];
+    const [a, b] = [...list].sort(() => Math.random() - 0.5).slice(0, 2);
+    return `Like <strong>${a.convert(value)}</strong> of ${a.label}, or <strong>${b.convert(value)}</strong> of ${b.label}.`;
 }
 
-
-// --- Comparison phrase ---
-
-function getComparisonPhrase(current, previous, mode) {
-    let timeUnit
-    switch (mode) {
-        case 'daily':
-            timeUnit = 'yesterday'
-            break;
-        case 'weekly':
-            timeUnit = 'last week'
-            break;
-        case 'monthly':
-            timeUnit = 'last month'
-            break;
-    }
-    if (previous === 0) return 'no previous data to compare';
-    const diff = ((current - previous) / previous * 100).toFixed(1);
-    if (diff > 0) return `${diff}% more than ${timeUnit}`;
-    if (diff < 0) return `${Math.abs(diff)}% less than ${timeUnit}`;
-    return `the same as ${timeUnit}`;
+function getTotalExample(type, value) {
+    const ex = totalComparisons[type];
+    return `≈ ${ex.convert(value)} ${ex.label}`;
 }
 
-function getExamplePhrase(target, value) {
-    switch (target) {
-        case 'co2':
-            return [
-                'produced an amount of CO2 equal to',
-                `driving a car for ${(value / 120).toFixed(1)} km`  // avg car emits ~120g co2/km
-            ];
-        case 'energy':
-            return [
-                'used an amount of energy equal to',
-                `charging a smartphone ${(value / 11).toFixed(0)} times`  // avg charge ~0.012 Wh
-            ];
-        case 'water':
-            return [
-                'used an amount of water equal to',
-                `${(value / 0.25).toFixed(0)} glasses of water`  // avg glass ~0.25L
-            ];
-    }
+function formatTime(seconds) {
+    if (seconds < 60) return `${Math.round(seconds)} second${Math.round(seconds) !== 1 ? 's' : ''}`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)} minute${Math.round(seconds / 60) !== 1 ? 's' : ''}`;
+    return `${(seconds / 3600).toFixed(1)} hours`;
 }
-
-
-// --- View ---
-
-function populateView(data, mode) {
-    let i = Math.floor(Math.random() * TYPES.length);
-    let target = TYPES[i];
-
-    if (mode === 'total') {
-        prevCells[0].textContent = '-';
-        prevCells[1].textContent = '-';
-        prevCells[2].textContent = '-';
-        currCells[0].textContent = `${data.total_co2_output_g.toFixed(3) ?? 0} g`;
-        currCells[1].textContent = `${data.total_energy_consumption_wh.toFixed(3) ?? 0} Wh`;
-        currCells[2].textContent = `${data.total_water_consumption_l.toFixed(3) ?? 0} L`;
-        timeUnitSpans[0].textContent = 'In total'
-        totalOnly.textContent = 'have';
-        compPhraseCont.classList.add('hidden')
-        cellGrader(prevCells, currCells, 'total')
-
-        switch (target) {
-            case 'co2':
-                [exampleSpanOne, exampleSpanTwo] = getExamplePhrase(target, data.total_co2_output_g.toFixed(3))
-                break;
-            case 'energy':
-                [exampleSpanOne, exampleSpanTwo] = getExamplePhrase(target, data.total_energy_consumption_wh.toFixed(3))
-                break;
-            case 'water':
-                [exampleSpanOne, exampleSpanTwo] = getExamplePhrase(target, data.total_water_consumption_l.toFixed(3))
-                break;
-        }
-
-        energyUnitSpans[0].textContent = exampleSpanOne
-        energyUnitSpans[1].textContent = exampleSpanTwo
-
+function drawBars(selector, data, color) {
+    const container = document.querySelector(selector);
+    if (!container) return;
+    if (!data || !Array.isArray(data) || data.length === 0) {
+        container.innerHTML = `<p style="font-size:11px; color:#888;">No data yet</p>`;
         return;
     }
 
-    const co2Prev = data[`${mode}_co2_previous`] ?? 0;
-    const co2Curr = data[`${mode}_co2_current`] ?? 0;
-    const energyPrev = data[`${mode}_energy_previous`] ?? 0;
-    const energyCurr = data[`${mode}_energy_current`] ?? 0;
-    const waterPrev = data[`${mode}_water_previous`] ?? 0;
-    const waterCurr = data[`${mode}_water_current`] ?? 0;
-
-    prevCells[0].textContent = `${co2Prev.toFixed(3)} g`;
-    prevCells[1].textContent = `${energyPrev.toFixed(3)} Wh`;
-    prevCells[2].textContent = `${waterPrev.toFixed(3)} L`;
-    currCells[0].textContent = `${co2Curr.toFixed(3)} g`;
-    currCells[1].textContent = `${energyCurr.toFixed(3)} Wh`;
-    currCells[2].textContent = `${waterCurr.toFixed(3)} L`;
-
-
-
-    switch (target) {
-        case 'co2':
-            [exampleSpanOne, exampleSpanTwo] = getExamplePhrase(target, co2Prev)
-            break;
-        case 'energy':
-            [exampleSpanOne, exampleSpanTwo] = getExamplePhrase(target, energyPrev)
-            break;
-        case 'water':
-            [exampleSpanOne, exampleSpanTwo] = getExamplePhrase(target, waterPrev)
-            break;
-    }
-
-
-
-    switch (mode) {
-        case 'daily':
-            timeUnitSpans[0].textContent = 'Yesterday'
-            timeUnitSpans[1].textContent = 'Today'
-            energyUnitSpans[0].textContent = exampleSpanOne
-            energyUnitSpans[1].textContent = exampleSpanTwo
-            totalOnly.textContent = '';
-            compPhraseCont.classList.remove('hidden')
-
-            break;
-        case 'weekly':
-            timeUnitSpans[0].textContent = 'Last week'
-            timeUnitSpans[1].textContent = 'This week'
-            energyUnitSpans[0].textContent = exampleSpanOne
-            energyUnitSpans[1].textContent = exampleSpanTwo
-            totalOnly.textContent = '';
-            compPhraseCont.classList.remove('hidden')
-
-            break;
-        case 'monthly':
-            timeUnitSpans[0].textContent = 'Last month'
-            timeUnitSpans[1].textContent = 'This month'
-            energyUnitSpans[0].textContent = exampleSpanOne
-            energyUnitSpans[1].textContent = exampleSpanTwo
-            totalOnly.textContent = '';
-            compPhraseCont.classList.remove('hidden')
-
-            break;
-
-    }
-
-    compPhrase.textContent = getComparisonPhrase(co2Curr, co2Prev, mode);
-
-    cellGrader(prevCells, currCells);
+    const max = Math.max(...data);
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    container.innerHTML = data.map((v, i) => {
+        const heightPct = max > 0 ? Math.round((v / max) * 100) : 0;
+        const isToday = i === data.length - 1;
+        return `
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; justify-content:flex-end; height:60px;">
+                <div style="width:100%; height:${heightPct}%; background:${isToday ? color : color + '55'}; border-radius:3px 3px 0 0; min-height:2px;"></div>
+                <span style="font-size:9px; color:#888;">${days[i]}</span>
+            </div>`;
+    }).join('');
 }
 
-
-// --- Button active state ---
-
-function setActiveButton(activeBtn) {
-    btns.forEach(btn => btn.classList.remove('active'));
-    activeBtn.classList.add('active');
+// =========================
+//  TAB BUILDERS
+// =========================
+function createCo2Tab(data) {
+    const counts = document.querySelectorAll('.co2-info .usage-count');
+    counts[0].innerHTML = `${data.daily_co2_current.toFixed(2)}<span class="unit"> g Co<sub>2</sub></span>`;
+    counts[1].innerHTML = `${data.weekly_co2_current.toFixed(2)}<span class="unit"> g Co<sub>2</sub></span>`;
+    counts[2].innerHTML = `${data.monthly_co2_current.toFixed(2)}<span class="unit"> g Co<sub>2</sub></span>`;
+    document.querySelector('.co2-info .example').innerHTML = getExample('co2', data.daily_co2_current);
+    drawBars('.co2-info .graph-container', data.daily_co2_history, '#7c523a');
 }
 
+function createEnergyTab(data) {
+    const counts = document.querySelectorAll('.energy-info .usage-count');
+    counts[0].innerHTML = `${data.daily_energy_current.toFixed(4)}<span class="unit"> Wh</span>`;
+    counts[1].innerHTML = `${data.weekly_energy_current.toFixed(4)}<span class="unit"> Wh</span>`;
+    counts[2].innerHTML = `${data.monthly_energy_current.toFixed(4)}<span class="unit"> Wh</span>`;
+    document.querySelector('.energy-info .example').innerHTML = getExample('energy', data.daily_energy_current);
+    drawBars('.energy-info .graph-container', data.daily_energy_history, '#c07c1a');
+}
 
-// --- Init ---
+function createWaterTab(data) {
+    // stored in litres, display in ml for daily/weekly, litres for monthly
+    const counts = document.querySelectorAll('.water-info .usage-count');
+    counts[0].innerHTML = `${(data.daily_water_current * 1000).toFixed(1)}<span class="unit"> ml</span>`;
+    counts[1].innerHTML = `${(data.weekly_water_current * 1000).toFixed(1)}<span class="unit"> ml</span>`;
+    counts[2].innerHTML = `${data.monthly_water_current.toFixed(3)}<span class="unit"> L</span>`;
+    document.querySelector('.water-info .example').innerHTML = getExample('water', data.daily_water_current * 1000);
+    drawBars('.water-info .graph-container', data.daily_water_history, '#1a7ca0');
+}
 
-chrome.storage.local.get(KEYS, (data) => {
-    populateView(data, 'daily');
+function createTotalTab(data) {
+    const rows = document.querySelectorAll('.total-info .total-row');
 
-    document.getElementById('daily-btn').addEventListener('click', (e) => {
-        setActiveButton(e.target);
-        populateView(data, 'daily');
-    });
-    document.getElementById('weekly-btn').addEventListener('click', (e) => {
-        setActiveButton(e.target);
-        populateView(data, 'weekly');
-    });
-    document.getElementById('monthly-btn').addEventListener('click', (e) => {
-        setActiveButton(e.target);
-        populateView(data, 'monthly');
-    });
-    document.getElementById('total-btn').addEventListener('click', (e) => {
-        setActiveButton(e.target);
-        populateView(data, 'total');
+    rows[0].querySelector('.total-usage').innerHTML = `${data.total_co2_output_g.toFixed(1)} <span>g</span>`;
+    rows[0].querySelector('.total-equals').innerHTML = getTotalExample('co2', data.total_co2_output_g);
+
+    rows[1].querySelector('.total-usage').innerHTML = `${data.total_energy_consumption_wh.toFixed(3)} <span>Wh</span>`;
+    rows[1].querySelector('.total-equals').innerHTML = getTotalExample('energy', data.total_energy_consumption_wh);
+
+    rows[2].querySelector('.total-usage').innerHTML = `${data.total_water_consumption_l.toFixed(3)} <span>L</span>`;
+    rows[2].querySelector('.total-equals').innerHTML = getTotalExample('water', data.total_water_consumption_l);
+
+    document.querySelector('.prompt-count').textContent = data.prompt_counter ?? 0;
+}
+
+// =========================
+//  TAB SWITCHING
+// =========================
+const panels = {
+    'co2-btn': document.querySelector('.co2-info'),
+    'energy-btn': document.querySelector('.energy-info'),
+    'water-btn': document.querySelector('.water-info'),
+    'total-btn': document.querySelector('.total-info'),
+};
+
+const svgs = {
+    'co2-btn': document.querySelector('#air'),
+    'energy-btn': document.querySelector('#energy'),
+    'water-btn': document.querySelector('#water'),
+    'total-btn': document.querySelector('#logo'),
+};
+
+document.querySelectorAll('.buttons button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.buttons button').forEach(b => b.classList.remove('active'));
+        Object.values(panels).forEach(p => p.classList.remove('active'));
+        ['logo', 'energy', 'water', 'air'].forEach(id => {
+            document.querySelector(`#${id}`)?.classList.remove('active');
+        });
+        btn.classList.add('active');
+        panels[btn.id].classList.add('active');
+        svgs[btn.id]?.classList.add('active');
     });
 });
+
+// =========================
+//  INIT
+// =========================
+async function init() {
+    const data = await storageGet([
+        'total_co2_output_g', 'total_energy_consumption_wh', 'total_water_consumption_l',
+        'daily_co2_current', 'weekly_co2_current', 'monthly_co2_current',
+        'daily_energy_current', 'weekly_energy_current', 'monthly_energy_current',
+        'daily_water_current', 'weekly_water_current', 'monthly_water_current',
+        'daily_co2_history', 'daily_energy_history', 'daily_water_history',
+        'prompt_counter',
+    ]);
+
+    // fallback for users who existed before history arrays were added
+    if (!data.daily_co2_history) data.daily_co2_history = [data.daily_co2_current ?? 0];
+    if (!data.daily_energy_history) data.daily_energy_history = [data.daily_energy_current ?? 0];
+    if (!data.daily_water_history) data.daily_water_history = [data.daily_water_current ?? 0];
+
+    createCo2Tab(data);
+    createEnergyTab(data);
+    createWaterTab(data);
+    createTotalTab(data);
+}
+
+init();

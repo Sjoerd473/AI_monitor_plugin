@@ -85,6 +85,10 @@ async function createNewUser() {
         weekly_water_current: 0,
         monthly_water_previous: 0,
         monthly_water_current: 0,
+        prompt_counter: 0,
+        daily_co2_history: [],
+        daily_energy_history: [],
+        daily_water_history: []
     })
 }
 
@@ -217,6 +221,10 @@ async function getTimeSinceLastPrompt() {
 //     // then turn the whole signature into a 64-char hex signature
 //     return [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, "0")).join("");
 // }
+
+function pushDaily(arr = [], value) {
+    return [...arr, value].slice(-7);
+}
 async function setOrUpdateUsageData(payload) {
     const result = await storageGet([
         'current_day', 'current_week', 'current_month',
@@ -230,6 +238,8 @@ async function setOrUpdateUsageData(payload) {
         'daily_water_previous', 'daily_water_current',
         'weekly_water_previous', 'weekly_water_current',
         'monthly_water_previous', 'monthly_water_current',
+        'daily_co2_history', 'daily_energy_history',
+        'daily_water_history', 'prompt_counter'
     ]);
     const now = new Date()
 
@@ -245,13 +255,19 @@ async function setOrUpdateUsageData(payload) {
     const weekReset = result.current_week !== thisWeek;
     const monthReset = result.current_month !== thisMonth;
 
+    const prevTotalCO2 = result.total_co2_output_g ?? 0;
+    const prevTotalEnergy = result.total_energy_consumption_wh ?? 0;
+    const prevTotalWater = result.total_water_consumption_l ?? 0;
+    const currentPromptCount = result.prompt_counter ?? 0;
+
     await storageSet({
         current_day: thisDay,
         current_week: thisWeek,
         current_month: thisMonth,
-        total_co2_output_g: result.total_co2_output_g + payload.prompt.co2_g,
-        total_energy_consumption_wh: result.total_energy_consumption_wh + payload.prompt.energy_wh,
-        total_water_consumption_l: result.total_water_consumption_l + payload.prompt.water_l,
+        prompt_counter: currentPromptCount + 1,
+        total_co2_output_g: prevTotalCO2 + (payload.prompt.co2_g ?? 0),
+        total_energy_consumption_wh: prevTotalEnergy + (payload.prompt.energy_wh ?? 0),
+        total_water_consumption_l: prevTotalWater + (payload.prompt.water_l ?? 0),
 
         daily_co2_previous: dayReset ? result.daily_co2_current : result.daily_co2_previous,
         daily_co2_current: (dayReset ? 0 : result.daily_co2_current) + payload.prompt.co2_g,
@@ -273,6 +289,18 @@ async function setOrUpdateUsageData(payload) {
         weekly_water_current: (weekReset ? 0 : result.weekly_water_current) + payload.prompt.water_l,
         monthly_water_previous: monthReset ? result.monthly_water_current : result.monthly_water_previous,
         monthly_water_current: (monthReset ? 0 : result.monthly_water_current) + payload.prompt.water_l,
+
+        daily_co2_history: dayReset
+            ? pushDaily(result.daily_co2_history, result.daily_co2_current)
+            : result.daily_co2_history,
+
+        daily_energy_history: dayReset
+            ? pushDaily(result.daily_energy_history, result.daily_energy_current)
+            : result.daily_energy_history,
+
+        daily_water_history: dayReset
+            ? pushDaily(result.daily_water_history, result.daily_water_current)
+            : result.daily_water_history,
     });
 }
 
@@ -342,7 +370,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 break;
             }
 
-          
+
 
             default:
                 break;
