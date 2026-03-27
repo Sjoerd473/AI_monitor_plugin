@@ -88,7 +88,8 @@ async function createNewUser() {
         prompt_counter: 0,
         daily_co2_history: [],
         daily_energy_history: [],
-        daily_water_history: []
+        daily_water_history: [],
+        data_sharing: true
     })
 }
 
@@ -349,6 +350,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             // this is called after every chatGPT response
             case "PROMPT_EVENT": {
                 try {
+                    const stored = await storageGet('data_sharing');
+                    const isSharing = stored.data_sharing ?? false;   // extract the boolean
+
+                    if (!isSharing) {
+                        sendResponse({ status: "ok", sharing: false });
+                        return;   // exit early, don’t send anything
+                    }
+
                     const apiKey = await getOrCreateApiKey();
                     console.log(msg.payload)
                     await setOrUpdateUsageData(msg.payload);
@@ -366,7 +375,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                     console.error("[AI Usage Meter] Failed to send:", err);
                 }
                 // Acknowledge to content script
-                sendResponse({ status: "ok" });
+                sendResponse({ status: "ok", sharing: true });
                 break;
             }
 

@@ -5,6 +5,10 @@ async function storageGet(keys) {
     return new Promise(resolve => chrome.storage.local.get(keys, resolve));
 }
 
+async function storageSet(items) {
+    return new Promise(resolve => chrome.storage.local.set(items, resolve));
+}
+
 // =========================
 //  COMPARISONS
 // =========================
@@ -138,6 +142,10 @@ function createWaterTab(data) {
 
 function createTotalTab(data) {
     const rows = document.querySelectorAll('.total-info .total-row');
+    const toggle = document.querySelector('.ball-wrapper')
+    const ball = document.querySelector('.ball')
+    const toggleText = document.querySelector('.data-toggle-text')
+    const isSharing = data.data_sharing
 
     rows[0].querySelector('.total-usage').innerHTML = `${data.total_co2_output_g.toFixed(1)} <span>g</span>`;
     rows[0].querySelector('.total-equals').innerHTML = getTotalExample('co2', data.total_co2_output_g);
@@ -149,6 +157,29 @@ function createTotalTab(data) {
     rows[2].querySelector('.total-equals').innerHTML = getTotalExample('water', data.total_water_consumption_l);
 
     document.querySelector('.prompt-count').textContent = data.prompt_counter ?? 0;
+
+    toggleText.textContent = isSharing ? 'enabled' : 'disabled';
+    if (isSharing) {
+        ball.classList.remove('disabled');
+    } else {
+        ball.classList.add('disabled');
+    }
+
+    toggle.addEventListener('click', async () => {
+        const stored = await storageGet(['data_sharing']);
+        const current = stored.data_sharing ?? false;  // assume `false` if missing
+        const newState = !current;
+
+        await storageSet({ data_sharing: newState });
+
+        // Update UI to reflect new state
+        toggleText.textContent = newState ? 'enabled' : 'disabled';
+        if (newState) {
+            ball.classList.remove('disabled');
+        } else {
+            ball.classList.add('disabled');
+        }
+    });
 }
 
 // =========================
@@ -181,6 +212,8 @@ document.querySelectorAll('.buttons button').forEach(btn => {
     });
 });
 
+
+
 // =========================
 //  INIT
 // =========================
@@ -191,7 +224,7 @@ async function init() {
         'daily_energy_current', 'weekly_energy_current', 'monthly_energy_current',
         'daily_water_current', 'weekly_water_current', 'monthly_water_current',
         'daily_co2_history', 'daily_energy_history', 'daily_water_history',
-        'prompt_counter',
+        'prompt_counter', 'data_sharing'
     ]);
 
     // fallback for users who existed before history arrays were added
