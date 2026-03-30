@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "AI Usage Meter",
+  "name": "AI Impact Monitor",
   "version": "0.1.0",
   "description": "Measures anonymous AI prompt usage across major AI sites.",
   "permissions": [
@@ -13,7 +13,6 @@
     "128": "icon128.png"
   },
   "host_permissions": [
-    "https://*.openai.com/*",
     "https://chatgpt.com/*",
     "https://claude.ai/*",
     "https://gemini.google.com/*",
@@ -29,7 +28,6 @@
   "content_scripts": [
     {
       "matches": [
-        "https://*.openai.com/*",
         "https://chatgpt.com/*",
         "https://claude.ai/*",
         "https://gemini.google.com/*",
