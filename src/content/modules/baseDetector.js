@@ -1,7 +1,11 @@
 import { computeEnvironmentalImpact } from "./helpers/energyCalc";
 import { Parser } from "./helpers/parser";
 
+// we extend the class of Parser, so all of its methods can be called in baseDetector
 export class baseDetector extends Parser {
+    // the empty object for config is a default param, this was
+    // config.editorSelector etc don't throw an error for classes
+    // that do not have a config
     constructor(config = {}) {
         super();
 
@@ -70,12 +74,16 @@ export class baseDetector extends Parser {
     }
 
 
-
+// helper method that waits for selected elements to appear
+// the pages we are looking at are not instantly completely readable
     waitForElement(selector, timeout = 30000) {
+        // ensures selectors is always an array
         const selectors = Array.isArray(selector) ? selector : [selector];
         return new Promise((resolve, reject) => {
             const start = Date.now();
             const check = () => {
+                // if any selector exists, resolve. If timeout exceded, reject
+                // otherwise schedule the next check
                 for (const sel of selectors) {
                     const el = document.querySelector(sel);
                     if (el) { resolve(el); return; }
@@ -84,8 +92,10 @@ export class baseDetector extends Parser {
                     reject(new Error(`None of [${selectors.join(', ')}] found within ${timeout}ms`));
                     return;
                 }
+                // repeats every 100ms, until element appears or timeout is reached
                 setTimeout(check, 100);
             };
+            // check is a self rescheduling loop
             check();
         });
     }
@@ -114,23 +124,32 @@ export class baseDetector extends Parser {
     startUniversalDetection(chatContainer) {
         console.log("[AI Usage Meter] Starting UNIVERSAL detection");
 
+        // every 300ms it gets the text that the user has written, and saves it into
+        // last input
+    
         setInterval(() => {
             const text = this.getActiveEditorText().trim();
             if (text.length > 0) {
                 this.lastInput = text;
             }
         }, 300);
-
+        // This is watching for new AI replies
+        // A mutation observer watches for  DOM changes
         const observer = new MutationObserver(() => {
             // ✅ Use getLastAssistantMessage() instead of hardcoded .prose
             const assistantText = this.getLastAssistantMessage();
             const currentInput = this.getActiveEditorText().trim();
 
             if (
+                // if there is AI text, and it is different from the previous text
+                // if there was a user message
+                // and the input box (currentInput) is now empty
                 assistantText &&
                 assistantText !== this.lastAssistantText &&
                 this.lastInput &&
                 currentInput === ""
+                // lastInput is the text the user actually sent
+                // currentInput is what the user might be typing after a submit
             ) {
                 console.log("[AI Usage Meter] ✅ REAL SUBMIT DETECTED");
                 this.handleSubmitWithText(this.lastInput, chatContainer);
@@ -138,7 +157,8 @@ export class baseDetector extends Parser {
                 this.lastAssistantText = assistantText;
             }
         });
-
+        // watch any child added or removed under chatContainer
+        // or any descendant changes anywhere inside the subtree
         observer.observe(chatContainer, {
             childList: true,
             subtree: true
@@ -147,12 +167,7 @@ export class baseDetector extends Parser {
 
     setupListeners(editor, chatContainer) {
 
-        console.log("=== DEBUG SELECTORS ===");
-        console.log("this.sendButton:", this.sendButton);
-        console.log("this.editorSelector:", this.editorSelector);
-        console.log("editor:", editor);
-        console.log("chatContainer:", chatContainer);
-        console.log("======================");
+ 
         // a wrapper is needed because this function must be called by an eventlistener
         // without the wrapper, an event object would be added to the parameters, breaking the function
         // it also needs to be an arrow function to preserve the THIS context
@@ -299,7 +314,7 @@ export class baseDetector extends Parser {
         this.watchForModelUpdate(async (model) => {
 
             console.log("[AI Usage Meter] Using model:", model);
-
+            // assemble all the data
             const tokensIn = this.estimateTokens(text);
             const conversationId = await this.getConversationId();
             const promptStartTime = performance.now();
@@ -335,7 +350,7 @@ export class baseDetector extends Parser {
             this.lastRegenerateUsed = false;
             this.lastSuggestedPromptUsed = false;
 
-            // 🔁 Track streaming response
+            // Track streaming response
             this.trackResponse(chatContainer, promptStartTime, (response, streamingDurationMs) => {
                 const tokensOut = this.estimateTokens(response)
                 const environment = this.getClientEnvironment()
@@ -393,7 +408,7 @@ export class baseDetector extends Parser {
                 };
 
                 console.log("[AI Usage Meter] 🚀 Sending event", event);
-
+                // send all the data as a single payload
                 chrome.runtime.sendMessage({
                     type: "PROMPT_EVENT",
                     payload: event

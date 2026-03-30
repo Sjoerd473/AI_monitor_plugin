@@ -354,3 +354,33 @@ p {
     background-color: red;
     transform: translateX(150%);
 }
+
+.missing-graph {
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.flex-graph {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    justify-content: flex-end;
+    height: 60px;
+}
+
+.graph-bar {
+    /* --bar-height: 0;
+    --background: red; */
+    width: 100%;
+    height: var(--bar-height);
+    background-color: var(--bar-color);
+    border-radius: 3px 3px 0 0;
+    min-height: 2px;
+}
+
+.graph-label {
+    font-size: 0.8em;
+    color: var(--text-color);
+}

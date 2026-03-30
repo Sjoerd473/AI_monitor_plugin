@@ -1,6 +1,6 @@
 // we grab the various keywords from a different file
 
-import { CATEGORY_KEYWORDS, LANG_KEYWORDS, PROMPT_KEYWORDS } from "./maps";
+import { CATEGORY_KEYWORDS, LANG_KEYWORDS, PROMPT_KEYWORDS, FOLLOWUP_KEYWORDS } from "./maps";
 
 // this contains all the various methods that do various reading jobs
 // of the prompt read
@@ -72,7 +72,7 @@ export class Parser {
             for (const el of elements) {
                 const text =
                     el.innerText?.trim() ||
-                    el.title?.trim() || 
+                    el.title?.trim() ||
                     el.dataset.model;
 
                 const cleaned = this.normalizeModelName(text);
@@ -226,17 +226,17 @@ export class Parser {
     }
     // detect if the question is a  follow up
     // needs to be expanded upon
-    
+
     detectFollowup(text) {
-    const followupRegexMap = regexConverter(FOLLOWUP_KEYWORDS);
-    const lower = text.toLowerCase().trim();
-    const wordCount = lower.split(/\s+/).length;
+        const followupRegexMap = this.regexConverter(FOLLOWUP_KEYWORDS);
+        const lower = text.toLowerCase().trim();
+        const wordCount = lower.split(/\s+/).length;
 
-    if (wordCount < 8) return true;
+        if (wordCount < 8) return true;
 
-    // skip short_message since it has no keywords, check all others
-    const categoriesToCheck = ["contextual_pronouns", "referential_phrases", "continuation_phrases", "clarification_phrases"];
-    return categoriesToCheck.some(category => followupRegexMap.get(category)?.test(lower));
+        // skip short_message since it has no keywords, check all others
+        const categoriesToCheck = ["contextual_pronouns", "referential_phrases", "continuation_phrases", "clarification_phrases"];
+        return categoriesToCheck.some(category => followupRegexMap.get(category)?.test(lower));
     }
 
     // a bunch of flags to check

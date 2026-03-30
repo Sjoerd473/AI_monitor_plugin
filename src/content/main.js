@@ -3,10 +3,6 @@ import { geminiDetector } from "./modules/gemini";
 import { claudeDetector } from "./modules/claude";
 import { perplexityDetector } from "./modules/perplexity";
 
-console.log("[AI Usage Meter] Script loaded on:", location.href, document.readyState);
-console.log("[AI Usage Meter] main exists?", !!document.querySelector('main'));
-console.log("[AI Usage Meter] body HTML preview:", document.body?.innerHTML?.slice(0, 300));
-
 
 // Read the url to decide which detector to start
 function getDetector() {
@@ -31,6 +27,7 @@ function getDetector() {
     return null;
 }
 
+// this starts a detector
 function init() {
     const DetectorClass = getDetector();
 
@@ -42,7 +39,8 @@ function init() {
     console.log("[AI Usage Meter] Starting detector:", DetectorClass.name);
     new DetectorClass();
 }
-
+// waits for the page to finish loading
+// so init is only called when the page is ready.
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
 } else {

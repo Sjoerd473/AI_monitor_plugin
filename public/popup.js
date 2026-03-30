@@ -1,6 +1,6 @@
-// =========================
-//  STORAGE
-// =========================
+// These are the same as in background.js
+// but this file cannot read background.js
+// so they are duplicated
 async function storageGet(keys) {
     return new Promise(resolve => chrome.storage.local.get(keys, resolve));
 }
@@ -9,9 +9,7 @@ async function storageSet(items) {
     return new Promise(resolve => chrome.storage.local.set(items, resolve));
 }
 
-// =========================
-//  COMPARISONS
-// =========================
+// some interesting? comparisons
 const comparisons = {
     co2: [
         {
@@ -72,8 +70,11 @@ const totalComparisons = {
     },
 };
 
+// a helper function to grab an example
 function getExample(type, value) {
     const list = comparisons[type];
+    // this is a shuffle trick to get two random entries of a shuffled list
+    // and destructures them into a and b
     const [a, b] = [...list].sort(() => Math.random() - 0.5).slice(0, 2);
     return `Like <strong>${a.convert(value)}</strong> of ${a.label}, or <strong>${b.convert(value)}</strong> of ${b.label}.`;
 }
@@ -88,35 +89,47 @@ function formatTime(seconds) {
     if (seconds < 3600) return `${Math.round(seconds / 60)} minute${Math.round(seconds / 60) !== 1 ? 's' : ''}`;
     return `${(seconds / 3600).toFixed(1)} hours`;
 }
+// this draws the graphs in plain old html and css
 function drawBars(selector, data, color) {
     const container = document.querySelector(selector);
     if (!container) return;
+    // if for some reason we cannot draw a graph, show some
+    // different HTML
     if (!data || !Array.isArray(data) || data.length === 0) {
-        container.innerHTML = `<p style="font-size:11px; color:#888;">No data yet</p>`;
+        container.innerHTML = `<p class='missing-graph'>No data yet</p>`;
         return;
     }
-
+    // get the highest value in the data to base
+    // the graph lenght off of
     const max = Math.max(...data);
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S']; // 0=Sun, 1=Mon ... 6=Sat
+    const todayIndex = new Date().getDay();
 
-    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S']; // [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
-    const todayIndex = new Date().getDay(); // 0 = Sunday, ..., 6 = Saturday
+    // data[0] = today, data[1] = yesterday, data[2] = 2 days ago...
+    // we want to display Mon→Sun left to right, so we need to reorder
 
-    container.innerHTML = data
-        .map((v, i) => {
-            const heightPct = max > 0 ? Math.round((v / max) * 100) : 0;
+    const bars = data.map((v, i) => {
+        const heightPct = max > 0 ? Math.round((v / max) * 100) : 0;
+        const dayIndex = (todayIndex - i + 7) % 7;
+        const isToday = i === 0; // data[0] is always today
+        const background = isToday ? color : color + '55';
 
-            // today is index 0 → go backwards in time
-            const dayIndex = (todayIndex - i + 7) % 7;
-            const dayLabel = days[dayIndex];
+        return { heightPct, dayLabel: days[dayIndex], background, dayIndex };
+    });
 
-            const isToday = i === 0;
+    // sort by dayIndex so Mon(1) → Tue(2) → ... → Sun(0 becomes 7)
+    bars.sort((a, b) => {
+        const ai = a.dayIndex === 0 ? 7 : a.dayIndex;
+        const bi = b.dayIndex === 0 ? 7 : b.dayIndex;
+        return ai - bi;
+    });
 
-            return `
-                <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; justify-content:flex-end; height:60px;">
-                    <div style="width:100%; height:${heightPct}%; background:${isToday ? color : color + '55'}; border-radius:3px 3px 0 0; min-height:2px;"></div>
-                    <span style="font-size:9px; color:#888;">${dayLabel}</span>
-                </div>`;
-        })
+    container.innerHTML = bars
+        .map(({ heightPct, dayLabel, background }) => `
+            <div class='flex-graph'>
+                <div class='graph-bar' style="--bar-height: ${heightPct}%; --bar-color: ${background};"></div>
+                <span class='graph-label'>${dayLabel}</span>
+            </div>`)
         .join('');
 }
 

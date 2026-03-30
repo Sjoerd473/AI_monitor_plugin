@@ -1,5 +1,6 @@
 import { baseDetector } from "./baseDetector";
 
+// every AI has its own selectors
 export class chatGPTDetector extends baseDetector {
 
     constructor() {
