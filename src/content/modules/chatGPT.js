@@ -22,7 +22,7 @@ export class chatGPTDetector extends baseDetector {
             '[data-testid="model-switcher-dropdown-button"]',
             '[data-testid^="model-switcher-"]',
             '[data-testid="model-switcher-dropdown"] *',
-            '.model-selector-active',  // Common active class
+            '.model-selector-active', 
             '[aria-label*="model"], [title*="model"]'
         ];
 

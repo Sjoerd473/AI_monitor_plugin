@@ -4,9 +4,7 @@
   "version": "0.1.0",
   "description": "Measures anonymous AI prompt usage across major AI sites.",
   "permissions": [
-    "scripting",
-    "storage",
-    "activeTab"
+    "storage"
   ],
   "icons": {
     "16": "icon16.png",
@@ -15,14 +13,14 @@
     "128": "icon128.png"
   },
   "host_permissions": [
-    "https://chat.openai.com/*",
+    "https://*.openai.com/*",
     "https://chatgpt.com/*",
     "https://claude.ai/*",
     "https://gemini.google.com/*",
     "https://www.perplexity.ai/*"
   ],
   "background": {
-    "service_worker": "src/background.js",
+    "service_worker": "background.js",
     "type": "module"
   },
   "action": {
@@ -31,14 +29,14 @@
   "content_scripts": [
     {
       "matches": [
-        "https://chat.openai.com/*",
+        "https://*.openai.com/*",
         "https://chatgpt.com/*",
         "https://claude.ai/*",
         "https://gemini.google.com/*",
         "https://www.perplexity.ai/*"
       ],
       "js": [
-        "src/main.js"
+        "main.js"
       ],
       "run_at": "document_idle"
     }

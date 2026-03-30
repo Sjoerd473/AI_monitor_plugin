@@ -199,29 +199,7 @@ async function getTimeSinceLastPrompt() {
     return Date.now() - last;
 }
 
-// =========================
-//  HMAC SIGNING
-// =========================
-// async function computeHMAC(payloadString, key = SECRET_KEY) {
-//     const encoder = new TextEncoder();
-//     const cryptoKey = await crypto.subtle.importKey(
-//         // the key we are importing is raw/not encoded
-//         "raw",
-//         // now we pass our key into the encoder
-//         encoder.encode(key),
-//         // specify the algorithm (HMAC) and protocol (SHA-256)
-//         // they need to be this way to correspond with the backend
-//         { name: "HMAC", hash: "SHA-256" },
-//         // false= cannot be exported (secure)
-//         false,
-//         // the key can only sign, not verify
-//         ["sign"]
-//     );
-//     // we then sign the payload with "HMAC" and our secret key encode our payload to bytes
-//     const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(payloadString));
-//     // then turn the whole signature into a 64-char hex signature
-//     return [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, "0")).join("");
-// }
+
 
 function pushDaily(arr = [], value) {
     return [...arr, value].slice(-7);
@@ -305,9 +283,7 @@ async function setOrUpdateUsageData(payload) {
     });
 }
 
-// =========================
-//  DATASET DOWNLOAD
-// =========================
+
 
 
 // =========================
@@ -347,7 +323,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 });
                 break;
             }
-            // this is called after every chatGPT response
+            // this is called after every  response
             case "PROMPT_EVENT": {
                 try {
                     const stored = await storageGet('data_sharing');
