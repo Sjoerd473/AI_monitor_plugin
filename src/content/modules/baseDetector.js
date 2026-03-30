@@ -151,7 +151,7 @@ export class baseDetector extends Parser {
                 // lastInput is the text the user actually sent
                 // currentInput is what the user might be typing after a submit
             ) {
-                console.log("[AI Usage Meter] ✅ REAL SUBMIT DETECTED");
+                console.log("[AI Usage Meter] REAL SUBMIT DETECTED");
                 this.handleSubmitWithText(this.lastInput, chatContainer);
                 this.lastInput = "";
                 this.lastAssistantText = assistantText;
@@ -407,7 +407,7 @@ export class baseDetector extends Parser {
                     conversation_id: conversationId
                 };
 
-                console.log("[AI Usage Meter] 🚀 Sending event", event);
+                console.log("[AI Usage Meter] Sending event", event);
                 // send all the data as a single payload
                 chrome.runtime.sendMessage({
                     type: "PROMPT_EVENT",

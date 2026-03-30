@@ -142,12 +142,7 @@ async function getOrCreateSessionId() {
     let sessionId = data.session_id;
     // expired will be true if there is no sessionId, or if 30 mins have passed
     const expired = !sessionId || (now - lastActive) > SESSION_TIMEOUT;
-    console.log(sessionId)
-    console.log(now)
-    console.log(lastActive)
-    console.log((now - lastActive) > SESSION_TIMEOUT)
-    console.log(expired)
-    console.log("finished, or am I?")
+   
 
     if (expired) {
         // so if more than SESSION_TIMEOUT mins has passed, we create a new session
