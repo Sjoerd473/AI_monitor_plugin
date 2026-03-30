@@ -1,6 +1,9 @@
+// we grab the various keywords from a different file
+
 import { CATEGORY_KEYWORDS, LANG_KEYWORDS, PROMPT_KEYWORDS } from "./maps";
 
-
+// this contains all the various methods that do various reading jobs
+// of the prompt read
 export class Parser {
 
     getActiveEditorText() {
@@ -36,15 +39,16 @@ export class Parser {
         if (!text || typeof text !== 'string') return 0;
 
         const charCount = text.length;
-
+        // every AI has its own avgCharsPerToken
         const estimatedTokens = Math.ceil(charCount / this.avgCharsPerToken);
-
+        // This caps the result between 1 and 100000
         return Math.max(1, Math.min(estimatedTokens, 100000));
     }
 
     getLastAssistantMessage() {
+        // every AI has its own selectors
         const selectors = this.lastAssistantMessageSelectors
-        // this tries every selector written above, to look for the last message written by chatGPT
+        // this tries every selector written above, to look for the last message written by the AI
         for (const selector of selectors) {
             const elements = document.querySelectorAll(selector);
             if (elements.length > 0) {
@@ -58,7 +62,8 @@ export class Parser {
     }
 
     getAIModel() {
-        // 1. Fetch-derived model (BEST)
+        // 1. Fetch-derived model
+        // works better on some models (claude, gemini)
         if (this.currentModel) return this.currentModel;
 
         // 2. DOM fallback
@@ -67,7 +72,7 @@ export class Parser {
             for (const el of elements) {
                 const text =
                     el.innerText?.trim() ||
-                    el.title?.trim() ||
+                    el.title?.trim() || 
                     el.dataset.model;
 
                 const cleaned = this.normalizeModelName(text);
@@ -91,12 +96,12 @@ export class Parser {
             .toLowerCase()
             .replace(/[^a-z0-9-]/g, '');
 
-        // 1. Pattern mapping (preferred)
+        // 1. Pattern mapping
         for (const [pattern, normalized] of Object.entries(this.modelNormalizationPatterns)) {
             if (lower.includes(pattern)) return normalized;
         }
 
-        // 2. Known prefixes (keep these)
+        // 2. Known prefixes
         if (
             lower.includes('gpt') ||
             lower.includes('pplx') ||
@@ -114,7 +119,7 @@ export class Parser {
     }
 
     // Usage: detect send (e.g., on button click/input), then watch
-    //// I don't think this works, given that the url never contains code or chat
+    // this only works for claude
     detectModelMode() {
         const url = location.pathname;
         if (url.includes('/code')) return 'code-interpreter';
@@ -140,6 +145,7 @@ export class Parser {
         return convId || 'unknown';
     }
 
+    // a helper method to convert a string to a hash
     async hashString(inputString) {
         const encoder = new TextEncoder();
         const data = encoder.encode(inputString);
@@ -151,6 +157,7 @@ export class Parser {
         return hashHex;
     }
 
+    // a helper function to create regex object from the maps
     regexConverter(obj) {
 
         function escapeRegex(str) {
@@ -169,6 +176,7 @@ export class Parser {
         return regexObj
     }
 
+    // use the various maps to classify a prompt
     classifyPrompt(text) {
         const promptMap = this.regexConverter(PROMPT_KEYWORDS)
         for (const [type, regex] of promptMap) {
@@ -176,7 +184,7 @@ export class Parser {
         }
         return 'general'
     }
-
+    // detect the language
     detectLanguage(text) {
         const langMap = this.regexConverter(LANG_KEYWORDS)
         for (const [lang, regex] of langMap) {
@@ -184,7 +192,7 @@ export class Parser {
         }
         return 'en'
     }
-
+    // and the domain
     detectDomain(text) {
         const categoryMap = this.regexConverter(CATEGORY_KEYWORDS)
         for (const [category, regex] of categoryMap) {
@@ -194,7 +202,8 @@ export class Parser {
     }
 
 
-
+    // this takes the width of the viewport, i.e the browser, not the actual screen
+    // will create false positives if the user navigates with smaller windows
     calculateViewport(viewportWidth) {
         if (viewportWidth >= 1000) {
             return 'desktop'
@@ -217,9 +226,19 @@ export class Parser {
     }
     // detect if the question is a  follow up
     // needs to be expanded upon
+    
     detectFollowup(text) {
-        return text.length < 50 || text.includes('this') || text.includes('it') || text.includes('above');
+    const followupRegexMap = regexConverter(FOLLOWUP_KEYWORDS);
+    const lower = text.toLowerCase().trim();
+    const wordCount = lower.split(/\s+/).length;
+
+    if (wordCount < 8) return true;
+
+    // skip short_message since it has no keywords, check all others
+    const categoriesToCheck = ["contextual_pronouns", "referential_phrases", "continuation_phrases", "clarification_phrases"];
+    return categoriesToCheck.some(category => followupRegexMap.get(category)?.test(lower));
     }
+
     // a bunch of flags to check
     // !! ensures a proper boolean
     hasImageAttachment(selector) {
@@ -238,6 +257,7 @@ export class Parser {
         return !!document.querySelector(selector);
     }
 
+    // timezone based on offset
     getRegion(timezone) {
         const tzh = timezone / 60
         if (tzh >= -9 && tzh <= -2) {

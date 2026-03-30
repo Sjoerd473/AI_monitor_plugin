@@ -90,23 +90,23 @@ export class claudeDetector extends baseDetector {
 
 
 
-    // getCurrentModel() {
-    //     const el = document.querySelector('[data-testid="model-selector-dropdown"]');
-    //     if (!el) return null;
+    getCurrentModel() {
+        const el = document.querySelector('[data-testid="model-selector-dropdown"]');
+        if (!el) return null;
 
-    //     const raw = el.innerText.toLowerCase().trim();
+        const raw = el.innerText.toLowerCase().trim();
 
-    //     // normalize like "Sonnet 4.6" → "claude-sonnet-4.6"
-    //     const cleaned = raw.replace(/\s+/g, '');
+        // normalize like "Sonnet 4.6" → "claude-sonnet-4.6"
+        const cleaned = raw.replace(/\s+/g, '');
 
-    //     for (const key in this.modelNormalizationPatterns) {
-    //         if (cleaned.includes(key)) {
-    //             return this.modelNormalizationPatterns[key];
-    //         }
-    //     }
+        for (const key in this.modelNormalizationPatterns) {
+            if (cleaned.includes(key)) {
+                return this.modelNormalizationPatterns[key];
+            }
+        }
 
-    //     return raw;
-    // }
+        return raw;
+    }
 
 
 

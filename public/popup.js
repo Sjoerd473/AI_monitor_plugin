@@ -97,16 +97,27 @@ function drawBars(selector, data, color) {
     }
 
     const max = Math.max(...data);
-    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    container.innerHTML = data.map((v, i) => {
-        const heightPct = max > 0 ? Math.round((v / max) * 100) : 0;
-        const isToday = i === data.length - 1;
-        return `
-            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; justify-content:flex-end; height:60px;">
-                <div style="width:100%; height:${heightPct}%; background:${isToday ? color : color + '55'}; border-radius:3px 3px 0 0; min-height:2px;"></div>
-                <span style="font-size:9px; color:#888;">${days[i]}</span>
-            </div>`;
-    }).join('');
+
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S']; // [Sun, Mon, Tue, Wed, Thu, Fri, Sat]
+    const todayIndex = new Date().getDay(); // 0 = Sunday, ..., 6 = Saturday
+
+    container.innerHTML = data
+        .map((v, i) => {
+            const heightPct = max > 0 ? Math.round((v / max) * 100) : 0;
+
+            // today is index 0 → go backwards in time
+            const dayIndex = (todayIndex - i + 7) % 7;
+            const dayLabel = days[dayIndex];
+
+            const isToday = i === 0;
+
+            return `
+                <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; justify-content:flex-end; height:60px;">
+                    <div style="width:100%; height:${heightPct}%; background:${isToday ? color : color + '55'}; border-radius:3px 3px 0 0; min-height:2px;"></div>
+                    <span style="font-size:9px; color:#888;">${dayLabel}</span>
+                </div>`;
+        })
+        .join('');
 }
 
 // =========================

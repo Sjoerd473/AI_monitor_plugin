@@ -48,14 +48,16 @@ async function getOrCreateUserId() {
     const newUserId = generateRandomId(DEFAULT_USER_BYTES);
     // puts it in storage as a key-value pair
     await storageSet({ user_id: newUserId });
+    // create a new user
     await createNewUser();
     return newUserId;
-    // // also create empty values for personal usage data here?
 }
 
+// create a new user, predefining all the values needed
+// so we know they are always available
 async function createNewUser() {
     const now = new Date()
-
+    // these
     const thisDay = now.toISOString().slice(0, 10);
     const thisWeek = getISOWeek(now);
     const thisMonth = now.toISOString().slice(0, 7);
@@ -89,10 +91,12 @@ async function createNewUser() {
         daily_co2_history: [],
         daily_energy_history: [],
         daily_water_history: [],
-        data_sharing: true
+        data_sharing: true //Data sharing is enabled by default
     })
 }
 
+// This is a rather complicated looking function that returns an output in the
+// format of 'YYYY'-W01'
 function getISOWeek(date) {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
@@ -102,18 +106,21 @@ function getISOWeek(date) {
     return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
 
+
 async function getOrCreateApiKey() {
+    // gets the api key from storage if it exists,
+    // and exits the function
     const { api_key } = await storageGet("api_key");
     if (api_key) return api_key;
 
     const { user_id } = await storageGet("user_id");
-
-    const res = await fetch("https://dev.madebyshu.net/register", {
+    // registers a new API key on the backend
+    const res = await fetch("https://ai-monitor.madebyshu.net/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id })
     });
-
+    // the token that is returned is the API key
     const { token } = await res.json();
     await storageSet({ api_key: token });
     return token;
@@ -143,7 +150,7 @@ async function getOrCreateSessionId() {
     console.log("finished, or am I?")
 
     if (expired) {
-        // so if more than 30 mins has passed, we create a new session
+        // so if more than SESSION_TIMEOUT mins has passed, we create a new session
         sessionId = generateRandomId();
         await storageSet({
             session_id: sessionId,
@@ -200,10 +207,15 @@ async function getTimeSinceLastPrompt() {
 }
 
 
+// this manages the daily consumption arrays
+// inserts the newest varaible on the left
+// when they go beyond a length of 7 eliminates the oldest (rightmost) variable
 
 function pushDaily(arr = [], value) {
     return [...arr, value].slice(-7);
 }
+
+// a meaty function that updates all the data in local storage on each prompt sent
 async function setOrUpdateUsageData(payload) {
     const result = await storageGet([
         'current_day', 'current_week', 'current_month',
@@ -248,6 +260,8 @@ async function setOrUpdateUsageData(payload) {
         total_energy_consumption_wh: prevTotalEnergy + (payload.prompt.energy_wh ?? 0),
         total_water_consumption_l: prevTotalWater + (payload.prompt.water_l ?? 0),
 
+        // every single one of these checks if the corresponding reset is true, and if so
+        // previous becomes current, current becomes 0 
         daily_co2_previous: dayReset ? result.daily_co2_current : result.daily_co2_previous,
         daily_co2_current: (dayReset ? 0 : result.daily_co2_current) + payload.prompt.co2_g,
         weekly_co2_previous: weekReset ? result.weekly_co2_current : result.weekly_co2_previous,
@@ -293,6 +307,7 @@ async function setOrUpdateUsageData(payload) {
 // chromes addListener expects a sync callback, but we need async/await
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // so we use an IIFE (Immediately Invoked Function Expression) (async () => {...}) ()
+    // 
     (async () => {
         // a switch statement, a different way to do if elif. In this example it looks at the msg.type
         switch (msg.type) {
@@ -326,6 +341,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             // this is called after every  response
             case "PROMPT_EVENT": {
                 try {
+                    // we check if the user has enabled data sharing
                     const stored = await storageGet('data_sharing');
                     const isSharing = stored.data_sharing ?? false;   // extract the boolean
 
@@ -335,14 +351,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                     }
 
                     const apiKey = await getOrCreateApiKey();
-                    console.log(msg.payload)
                     await setOrUpdateUsageData(msg.payload);
-                    const res = await fetch("https://dev.madebyshu.net/events", {
+                    const res = await fetch("https://ai-monitor.madebyshu.net/events", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
                             "Authorization": `Bearer ${apiKey}`
                         },
+                        // send the payload as json
                         body: JSON.stringify(msg.payload)
                     });
 
@@ -360,10 +376,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             default:
                 break;
         }
-    })();
+    })(); //these () call the function immediately, and makes it run async
     // without return true Chrome closes the channel immediately, and sendResponse() would fail
-    // because we have async functions
-    return true; // keep async channel open for async sendResponse
+    // because we have async functions. Return true is hit immediately
+    return true; 
 });
 
 console.log("[AI Usage Meter] Background service worker loaded");

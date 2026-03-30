@@ -1,7 +1,4 @@
 
-
-
-// questo va bene
 const LANG_KEYWORDS = {
   it: ["ciao", "per favore", "grazie", "salve", "buongiorno", "buonasera", "prego", "scusa", "sì", "no", "aiuto"],
   en: ["hello", "please", "thank", "hi", "thanks", "welcome", "goodbye", "sorry", "yes", "no", "help"],
@@ -10,16 +7,6 @@ const LANG_KEYWORDS = {
   de: ["hallo", "bitte", "danke", "guten tag", "gern geschehen", "tschüss", "entschuldigung", "ja", "nein", "hilfe"]
 };
 
-
-
-// anche qui stai attento ad essere consistente, non 'ita', 'eng' ecc. ma 'it', en' ecc. come hai fatto altrove.
-// poi un altra cosa, qui hai mischiato prompt e category keywords.
-// prompt_keywords sono i tipi di risposte che chiediamo all'IA di fare: un riassunto, un data analysis e cosi via.
-// category_keywords sono le cose di cui stiamo parlando: sport, il tempo, coding ecc.
-
-// dentro prompt_keywords ho commentato quello che non starebbe dentro, vedi tu se vuoi aggiungerli al category_keywords oppure eliminarli.
-// poi ci sono anche un paio di ripetetizioni: 'riassunto', 'spiegazione', 'pianificazione'. Anche questi sono da eliminare, volendo puoi aggiungere 
-// le liste di parole che hai scritto ai dizionari esistenti.
 
 const PROMPT_KEYWORDS = {
   creative_writing: {
@@ -259,28 +246,40 @@ const CATEGORY_KEYWORDS = {
   }
 };
 
-// education
-// science
-// history
-// philosophy
-// psychology
-// travel
-// food
-// fashion
-// relationships
-// self_improvement
-// art
-// music
-// writing
-// film
-// gaming
-// ai
-// cybersecurity
-// law
-// sustainability    
+const FOLLOWUP_KEYWORDS = {
+
+    contextual_pronouns: {
+        en: ["it", "this", "that", "these", "those", "they", "them", "its"],
+        it: ["questo", "questa", "questi", "queste", "quello", "quella", "esso", "essa", "loro"],
+        es: ["esto", "esta", "estos", "estas", "eso", "esa", "ellos", "ellas", "ello"],
+        fr: ["ceci", "cela", "celui", "celle", "ceux", "celles", "il", "elle", "ils", "elles"],
+        de: ["dies", "diese", "dieser", "dieses", "das", "jenes", "jene", "sie", "es"]
+    },
+    referential_phrases: {
+        en: ["the above", "the previous", "the last", "the prior", "as mentioned", "as discussed", "as shown", "as described", "as stated", "from before", "from earlier", "in that case", "in this case"],
+        it: ["come detto", "come discusso", "come mostrato", "come descritto", "come indicato", "nel caso precedente", "in questo caso", "di prima", "di sopra"],
+        es: ["como se mencionó", "como se discutió", "como se mostró", "como se describió", "en ese caso", "en este caso", "lo anterior", "de antes"],
+        fr: ["comme mentionné", "comme discuté", "comme montré", "comme décrit", "dans ce cas", "le précédent", "d'avant", "ci-dessus"],
+        de: ["wie erwähnt", "wie besprochen", "wie gezeigt", "wie beschrieben", "in diesem Fall", "das vorherige", "von vorhin", "wie oben"]
+    },
+    continuation_phrases: {
+        en: ["also", "additionally", "furthermore", "moreover", "instead", "rather", "alternatively", "what about", "what if", "what else", "and also", "and then", "but why", "but how", "but what"],
+        it: ["anche", "inoltre", "in aggiunta", "invece", "in alternativa", "e poi", "ma perché", "ma come", "ma cosa", "e se", "e anche"],
+        es: ["también", "además", "asimismo", "en cambio", "alternativamente", "qué hay de", "y si", "y también", "pero por qué", "pero cómo"],
+        fr: ["aussi", "de plus", "en outre", "plutôt", "alternativement", "et si", "qu'en est-il", "mais pourquoi", "mais comment", "et aussi"],
+        de: ["auch", "zusätzlich", "außerdem", "stattdessen", "alternativ", "was ist mit", "und wenn", "aber warum", "aber wie", "und auch"]
+    },
+    clarification_phrases: {
+        en: ["can you explain", "can you clarify", "can you elaborate", "can you expand", "can you rephrase", "can you redo", "can you fix", "can you simplify", "can you improve", "what do you mean", "i don't understand", "i dont understand", "make it", "try again"],
+        it: ["puoi spiegare", "puoi chiarire", "puoi elaborare", "puoi espandere", "puoi riformulare", "puoi rifare", "puoi correggere", "puoi semplificare", "puoi migliorare", "cosa intendi", "non capisco", "rendilo", "riprova"],
+        es: ["puedes explicar", "puedes aclarar", "puedes elaborar", "puedes expandir", "puedes reformular", "puedes rehacer", "puedes corregir", "puedes simplificar", "no entiendo", "qué quieres decir", "inténtalo de nuevo"],
+        fr: ["peux-tu expliquer", "peux-tu clarifier", "peux-tu développer", "peux-tu reformuler", "peux-tu refaire", "peux-tu corriger", "peux-tu simplifier", "je ne comprends pas", "que veux-tu dire", "réessaie"],
+        de: ["kannst du erklären", "kannst du klarstellen", "kannst du ausführen", "kannst du umformulieren", "kannst du wiederholen", "kannst du korrigieren", "kannst du vereinfachen", "ich verstehe nicht", "was meinst du", "versuch es nochmal"]
+    }
+}; 
 
 
 
 
 
-export { PROMPT_KEYWORDS, CATEGORY_KEYWORDS, LANG_KEYWORDS}
+export { PROMPT_KEYWORDS, CATEGORY_KEYWORDS, LANG_KEYWORDS, FOLLOWUP_KEYWORDS}

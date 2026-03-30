@@ -96,20 +96,20 @@ export class geminiDetector extends baseDetector {
         return el.innerText?.trim() || "";
     }
 
-    // getCurrentModel() {
-    //     const el = document.querySelector('[data-test-id="bard-mode-menu-button"]');
-    //     if (!el) return null;
+    getCurrentModel() {
+        const el = document.querySelector('[data-test-id="bard-mode-menu-button"]');
+        if (!el) return null;
 
-    //     const raw = el.innerText?.toLowerCase().trim().replace(/\s+/g, '') || '';
+        const raw = el.innerText?.toLowerCase().trim().replace(/\s+/g, '') || '';
 
-    //     for (const key in this.modelNormalizationPatterns) {
-    //         if (raw.includes(key)) {
-    //             return this.modelNormalizationPatterns[key];
-    //         }
-    //     }
+        for (const key in this.modelNormalizationPatterns) {
+            if (raw.includes(key)) {
+                return this.modelNormalizationPatterns[key];
+            }
+        }
 
-    //     return raw || null;
-    // }
+        return raw || null;
+    }
 
     observeNavigation() {
         let lastUrl = location.href;
