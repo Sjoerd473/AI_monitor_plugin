@@ -9,6 +9,52 @@ async function storageSet(items) {
     return new Promise(resolve => chrome.storage.local.set(items, resolve));
 }
 
+document.addEventListener('DOMContentLoaded', async () => {
+    const overlay = document.getElementById('onboarding-overlay');
+    const startBtn = document.getElementById('get-started');
+    const optInCheckbox = document.getElementById('research-opt-in');
+
+    // 1. Check if onboarding is already done
+    const result = await chrome.storage.local.get(['onboardingComplete']);
+
+    if (!result.onboardingComplete) {
+        overlay.style.display = 'block'; // Show the welcome screen
+    }
+
+    // 2. Handle the "Get Started" click
+    startBtn.addEventListener('click', async () => {
+        const isSharing = optInCheckbox.checked;
+
+        // Save preferences and the fact that they've seen this screen
+        await chrome.storage.local.set({
+            onboardingComplete: true,
+            data_sharing: isSharing
+        });
+
+        // If they opted in, you might want to trigger your user_id/API key generation here
+        if (isSharing) {
+            await initializeUserAccount();
+        }
+
+        overlay.style.display = 'none'; // Hide the overlay
+        init();
+    });
+});
+
+async function initializeUserAccount() {
+    console.log("Initializing research account...");
+
+    // We send a message to the background script to generate 
+    // the User ID and fetch the API Key from the server immediately.
+    chrome.runtime.sendMessage({ type: "GET_IDENTIFIERS" }, (response) => {
+        if (chrome.runtime.lastError) {
+            console.error("Error contacting background script:", chrome.runtime.lastError);
+            return;
+        }
+        console.log("Research account initialized with ID:", response.user_id);
+    });
+}
+
 // some interesting? comparisons
 const comparisons = {
     co2: [
@@ -190,19 +236,23 @@ function createTotalTab(data) {
     }
 
     toggle.addEventListener('click', async () => {
-        const stored = await storageGet(['data_sharing']);
-        const current = stored.data_sharing ?? false;  // assume `false` if missing
-        const newState = !current;
+        const data = await storageGet(['data_sharing', 'api_key']);
+        const currentSharing = data.data_sharing ?? false;
+        const newState = !currentSharing;
 
+        // 1. Update the sharing preference immediately
         await storageSet({ data_sharing: newState });
 
-        // Update UI to reflect new state
-        toggleText.textContent = newState ? 'enabled' : 'disabled';
-        if (newState) {
-            ball.classList.remove('disabled');
-        } else {
-            ball.classList.add('disabled');
+        // 2. Only "Initialize" if they are turning it ON 
+        // AND they don't already have an API key from a previous session.
+        if (newState && !data.api_key) {
+            console.log("First time opting in. Registering...");
+            await initializeUserAccount();
         }
+
+        // 3. Update UI
+        toggleText.textContent = newState ? 'enabled' : 'disabled';
+        ball.classList.toggle('disabled', !newState);
     });
 }
 
@@ -238,9 +288,7 @@ document.querySelectorAll('.buttons button').forEach(btn => {
 
 
 
-// =========================
-//  INIT
-// =========================
+
 async function init() {
     const data = await storageGet([
         'total_co2_output_g', 'total_energy_consumption_wh', 'total_water_consumption_l',
@@ -251,10 +299,26 @@ async function init() {
         'prompt_counter', 'data_sharing'
     ]);
 
-    // fallback for users who existed before history arrays were added
-    if (!data.daily_co2_history) data.daily_co2_history = [data.daily_co2_current ?? 0];
-    if (!data.daily_energy_history) data.daily_energy_history = [data.daily_energy_current ?? 0];
-    if (!data.daily_water_history) data.daily_water_history = [data.daily_water_current ?? 0];
+    // Numeric defaults for new users (undefined causes .toFixed() to crash)
+    data.total_co2_output_g ??= 0;
+    data.total_energy_consumption_wh ??= 0;
+    data.total_water_consumption_l ??= 0;
+    data.daily_co2_current ??= 0;
+    data.weekly_co2_current ??= 0;
+    data.monthly_co2_current ??= 0;
+    data.daily_energy_current ??= 0;
+    data.weekly_energy_current ??= 0;
+    data.monthly_energy_current ??= 0;
+    data.daily_water_current ??= 0;
+    data.weekly_water_current ??= 0;
+    data.monthly_water_current ??= 0;
+    data.prompt_counter ??= 0;
+    data.data_sharing ??= false;
+
+    // Fallback for users who existed before history arrays were added
+    data.daily_co2_history ??= [data.daily_co2_current];
+    data.daily_energy_history ??= [data.daily_energy_current];
+    data.daily_water_history ??= [data.daily_water_current];
 
     createCo2Tab(data);
     createEnergyTab(data);

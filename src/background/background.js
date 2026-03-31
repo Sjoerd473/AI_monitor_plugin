@@ -63,6 +63,9 @@ async function createNewUser() {
     const thisMonth = now.toISOString().slice(0, 7);
 
     await storageSet({
+        onboardingComplete: false,
+        data_sharing: false,
+
         total_co2_output_g: 0,
         total_energy_consumption_wh: 0,
         total_water_consumption_l: 0,
@@ -91,7 +94,7 @@ async function createNewUser() {
         daily_co2_history: [],
         daily_energy_history: [],
         daily_water_history: [],
-        data_sharing: true //Data sharing is enabled by default
+
     })
 }
 
@@ -142,7 +145,7 @@ async function getOrCreateSessionId() {
     let sessionId = data.session_id;
     // expired will be true if there is no sessionId, or if 30 mins have passed
     const expired = !sessionId || (now - lastActive) > SESSION_TIMEOUT;
-   
+
 
     if (expired) {
         // so if more than SESSION_TIMEOUT mins has passed, we create a new session
@@ -319,6 +322,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                         getTimeSinceLastPrompt()
                     ]);
 
+                // TRIGGER REGISTRATION: 
+                // This ensures that clicking "Get Started" in the popup 
+                // actually hits your https://ai-monitor.madebyshu.net/register endpoint.
+                const apiKey = await getOrCreateApiKey();
+
                 // update the timestamp only when the promises have finished
                 await updateLastPromptTime();
 
@@ -329,40 +337,52 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                     session_start,
                     session_prompt_count,
                     time_since_last_prompt,
-                    extension_version: chrome.runtime.getManifest().version
+                    extension_version: chrome.runtime.getManifest().version,
+                    registered: !!apiKey
                 });
                 break;
             }
             // this is called after every  response
             case "PROMPT_EVENT": {
                 try {
-                    // we check if the user has enabled data sharing
-                    const stored = await storageGet('data_sharing');
-                    const isSharing = stored.data_sharing ?? false;   // extract the boolean
+                    // FIX: Pass the keys as an array []
+                    const stored = await storageGet(['data_sharing', 'onboardingComplete']);
 
-                    if (!isSharing) {
+                    const isSharing = stored.data_sharing ?? false;
+                    const isOnboarded = stored.onboardingComplete ?? false;
+
+                    // Update local stats first
+                    await setOrUpdateUsageData(msg.payload);
+
+                    // Debugging tip: Add a log here to see why it's exiting
+                    console.log(`[AI Impact] Sharing: ${isSharing}, Onboarded: ${isOnboarded}`);
+
+                    if (!isSharing || !isOnboarded) {
                         sendResponse({ status: "ok", sharing: false });
-                        return;   // exit early, don’t send anything
+                        return;
                     }
 
                     const apiKey = await getOrCreateApiKey();
-                    await setOrUpdateUsageData(msg.payload);
                     const res = await fetch("https://ai-monitor.madebyshu.net/events", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
                             "Authorization": `Bearer ${apiKey}`
                         },
-                        // send the payload as json
                         body: JSON.stringify(msg.payload)
                     });
 
-                    console.log("[AI Usage Meter] Server response:", await res.text());
+                    const text = await res.text();
+                    console.log("[AI Usage Meter] Server response:", text);
+
+                    // IMPORTANT: Move sendResponse here to ensure it only says sharing: true 
+                    // if the fetch actually happened.
+                    sendResponse({ status: "ok", sharing: true });
+
                 } catch (err) {
                     console.error("[AI Usage Meter] Failed to send:", err);
+                    sendResponse({ status: "error", message: err.message });
                 }
-                // Acknowledge to content script
-                sendResponse({ status: "ok", sharing: true });
                 break;
             }
 
@@ -374,7 +394,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })(); //these () call the function immediately, and makes it run async
     // without return true Chrome closes the channel immediately, and sendResponse() would fail
     // because we have async functions. Return true is hit immediately
-    return true; 
+    return true;
 });
 
 console.log("[AI Usage Meter] Background service worker loaded");

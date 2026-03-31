@@ -9,6 +9,25 @@
 </head>
 
 <body>
+    <div id="onboarding-overlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:999; padding:20px; box-sizing:border-box;">
+        <h2>Welcome to AI Impact Monitor</h2>
+        <p>To help our research into sustainable AI, we collect <strong>anonymized metadata</strong> (like prompt length
+            and if you use voice/files).</p>
+        <p><strong>We never collect your actual text.</strong></p>
+
+        <label>
+            <input type="checkbox" id="research-opt-in" checked>
+            Share anonymous data for research
+        </label>
+
+        <button id="get-started" style="margin-top:20px; display:block; width:100%;">Get Started</button>
+
+        <p style="font-size: 10px; color: gray;">
+            By clicking "Get Started," you agree to our
+            <a href="https://ai-monitor.madebyshu.net/privacy" target="_blank">Privacy Policy</a>.
+        </p>
+    </div>
     <div class="container">
         <div class="buttons">
             <button id="co2-btn" class="active"><svg width="100%" height="100%" viewBox="0 0 54 47" version="1.1"
