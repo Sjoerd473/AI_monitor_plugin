@@ -24,6 +24,8 @@ export const PROMPT_TYPE_MULTIPLIER = {
     "general": 1.0,
 };
 
+
+
 export const DOMAIN_MULTIPLIER = {
     marketing: 1.15,
     finance: 1.20,

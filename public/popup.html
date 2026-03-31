@@ -625,7 +625,14 @@
                     </div>
                     <p class="total-equals">Equals</p>
                 </div>
-                <p>Across <span class="prompt-count"></span> prompts tracked</p>
+                <div class="total-cost-row">
+                    <p>
+                        <span class="total-usage"></span>
+                        <span class="total-equals"></span>
+                    </p>
+
+                    <p>Across <span class="prompt-count"></span> prompts tracked</p>
+                </div>
                 <div class="data-sharing-container">
                     <p>Data sharing is currently <span class="data-toggle-text">enabled</span></p>
                     <button role="switch" class="ball-wrapper"><span class="ball enabled"></span></button>
@@ -1235,6 +1242,6 @@
         </div>
     </div>
 </body>
-<script src="popup.js"></script>
+<script type="module" src="popup.js"></script>
 
 </html>

@@ -1,5 +1,23 @@
+const REGION_COSTS = {
+    EU: {
+        cost_eur_per_wh: 0.00028,
+        cost_eur_per_l: 0.0045,
+        // €90 / 1,000,000 grams = €0.00009 per gram of CO2
+        carbon_tax_eur_per_g: 0.00009
+    },
+    US: {
+        cost_eur_per_wh: 0.000165,
+        cost_eur_per_l: 0.0006,
+        carbon_tax_eur_per_g: 0.00009
+    },
+    ASIA: {
+        cost_eur_per_wh: 0.00011,
+        cost_eur_per_l: 0.00075,
+        carbon_tax_eur_per_g: 0.00009
+    },
+};
+
 // These are the same as in background.js
-// but this file cannot read background.js
 // so they are duplicated
 async function storageGet(keys) {
     return new Promise(resolve => chrome.storage.local.get(keys, resolve));
@@ -70,6 +88,16 @@ const comparisons = {
             label: 'a kettle boiling',
             convert: g => formatTime(g / (3000 / 1000 * 233 / 3600)),
         },
+        {
+            label: 'a tree absorbing CO2',
+            // 25kg/year ≈ 0.046g/minute
+            convert: g => formatTime(g / 0.046 * 60),
+        },
+        {
+            label: 'streaming HD video',
+            // 36g per hour
+            convert: g => formatTime(g / 36 * 3600),
+        }
     ],
     energy: [
         {
@@ -81,9 +109,21 @@ const comparisons = {
             convert: wh => formatTime(wh / 25 * 3600),
         },
         {
-            label: 'an LED bulb on',
+            label: 'a LED bulb on',
             convert: wh => formatTime(wh / 8 * 3600),
         },
+        {
+            label: 'a MacBook Air running',
+            convert: wh => formatTime(wh / 18 * 3600),
+        },
+        {
+            label: 'an idle Smart Speaker',
+            convert: wh => formatTime(wh / 2 * 3600),
+        },
+        {
+            label: 'a fridge "humming"',
+            convert: wh => formatTime(wh / 6.25 * 3600),
+        }
     ],
     water: [
         {
@@ -98,6 +138,18 @@ const comparisons = {
             label: 'toilet flushes',
             convert: ml => `${(ml / 6000).toFixed(2)} flushes`,
         },
+        {
+            label: 'sips of water',
+            convert: ml => `${Math.round(ml / 15)} sips`,
+        },
+        {
+            label: 'an Eco dishwasher cycle',
+            convert: ml => `${(ml / 10000).toFixed(4)} cycles`,
+        },
+        {
+            label: 'boiling water for tea',
+            convert: ml => `${(ml / 250).toFixed(2)} cups`,
+        }
     ],
 };
 
@@ -216,6 +268,26 @@ function createTotalTab(data) {
     const ball = document.querySelector('.ball')
     const toggleText = document.querySelector('.data-toggle-text')
     const isSharing = data.data_sharing
+
+    // 1. Identify the region (Default to EU if not set)
+    const REGION = REGION_COSTS.EU;
+
+    // 2. Perform Calculations
+    const energyCost = data.total_energy_consumption_wh * REGION.cost_eur_per_wh;
+    const waterCost = data.total_water_consumption_l * REGION.cost_eur_per_l;
+    const carbonTax = data.total_co2_output_g * REGION.carbon_tax_eur_per_g;
+
+    const totalEnvironmentalDebt = energyCost + waterCost + carbonTax;
+
+    const costRow = document.querySelector('.total-cost-row');
+    if (costRow) {
+        costRow.querySelector('.total-usage').innerHTML = `€${totalEnvironmentalDebt.toFixed(3)}`;
+
+        // Relatable comparison for the cost
+        let costExample = "in climate debt";
+
+        costRow.querySelector('.total-equals').innerHTML = costExample;
+    }
 
     rows[0].querySelector('.total-usage').innerHTML = `${data.total_co2_output_g.toFixed(1)} <span>g</span>`;
     rows[0].querySelector('.total-equals').innerHTML = getTotalExample('co2', data.total_co2_output_g);

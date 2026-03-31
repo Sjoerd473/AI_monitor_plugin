@@ -4,7 +4,7 @@
     ## Features
     - Multi-Platform Support: Automatically detects activity on ChatGPT, Claude, Gemini, and Perplexity.
 
-    - Environmental Analytics: Calculates estimated CO2 (grams), Energy (Wh), and Water (Liters) based on prompt metadata.
+    - Environmental Analytics: Calculates estimated CO2 (grams), Energy (Wh), and Water (Liters) based on prompt metadata, using 2026 industry-standard benchmarks.
 
     ## Privacy-First Design:
 
