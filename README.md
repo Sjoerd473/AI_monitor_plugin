@@ -84,6 +84,8 @@
 
     - **Water**: Estimated ML used for cooling per inference cycle.
 
+    - **Climate Debt**: Calculated with regional energy and water costs, plus carbon tax.
+
     ## License
     This project is licensed under the Apache 2.0 License - see the LICENSE file for details.
 
