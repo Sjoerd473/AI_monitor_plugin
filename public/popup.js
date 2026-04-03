@@ -188,7 +188,7 @@ function formatTime(seconds) {
     return `${(seconds / 3600).toFixed(1)} hours`;
 }
 // this draws the graphs in plain old html and css
-function drawBars(selector, data, color) {
+function drawBars(selector, data, color, unit) {
     const container = document.querySelector(selector);
     if (!container) return;
     // if for some reason we cannot draw a graph, show some
@@ -211,8 +211,9 @@ function drawBars(selector, data, color) {
         const dayIndex = (todayIndex - i + 7) % 7;
         const isToday = i === 0; // data[0] is always today
         const background = isToday ? color : color + '55';
+        const value = parseFloat(v.toFixed(4))
 
-        return { heightPct, dayLabel: days[dayIndex], background, dayIndex };
+        return { heightPct, dayLabel: days[dayIndex], background, dayIndex, value };
     });
 
     // sort by dayIndex so Mon(1) → Tue(2) → ... → Sun(0 becomes 7)
@@ -223,9 +224,9 @@ function drawBars(selector, data, color) {
     });
 
     container.innerHTML = bars
-        .map(({ heightPct, dayLabel, background }) => `
+        .map(({ heightPct, dayLabel, background, value }) => `
             <div class='flex-graph'>
-                <div class='graph-bar' style="--bar-height: ${heightPct}%; --bar-color: ${background};"></div>
+                <div data-value="${value} ${unit}" class='graph-bar' style="--bar-height: ${heightPct}%; --bar-color: ${background};"></div>
                 <span class='graph-label'>${dayLabel}</span>
             </div>`)
         .join('');
@@ -240,7 +241,7 @@ function createCo2Tab(data) {
     counts[1].innerHTML = `${data.weekly_co2_current.toFixed(2)}<span class="unit"> g Co<sub>2</sub></span>`;
     counts[2].innerHTML = `${data.monthly_co2_current.toFixed(2)}<span class="unit"> g Co<sub>2</sub></span>`;
     document.querySelector('.co2-info .example').innerHTML = getExample('co2', data.daily_co2_current);
-    drawBars('.co2-info .graph-container', data.daily_co2_history, '#7c523a');
+    drawBars('.co2-info .graph-container', data.daily_co2_history, '#7c523a', 'g');
 }
 
 function createEnergyTab(data) {
@@ -249,7 +250,7 @@ function createEnergyTab(data) {
     counts[1].innerHTML = `${data.weekly_energy_current.toFixed(4)}<span class="unit"> Wh</span>`;
     counts[2].innerHTML = `${data.monthly_energy_current.toFixed(4)}<span class="unit"> Wh</span>`;
     document.querySelector('.energy-info .example').innerHTML = getExample('energy', data.daily_energy_current);
-    drawBars('.energy-info .graph-container', data.daily_energy_history, '#c07c1a');
+    drawBars('.energy-info .graph-container', data.daily_energy_history, '#c07c1a', 'Wh');
 }
 
 function createWaterTab(data) {
@@ -259,7 +260,7 @@ function createWaterTab(data) {
     counts[1].innerHTML = `${(data.weekly_water_current * 1000).toFixed(1)}<span class="unit"> ml</span>`;
     counts[2].innerHTML = `${data.monthly_water_current.toFixed(3)}<span class="unit"> L</span>`;
     document.querySelector('.water-info .example').innerHTML = getExample('water', data.daily_water_current * 1000);
-    drawBars('.water-info .graph-container', data.daily_water_history, '#1a7ca0');
+    drawBars('.water-info .graph-container', data.daily_water_history, '#1a7ca0', 'ml');
 }
 
 function createTotalTab(data) {

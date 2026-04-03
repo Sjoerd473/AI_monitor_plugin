@@ -209,8 +209,17 @@ async function getTimeSinceLastPrompt() {
 // inserts the newest varaible on the left
 // when they go beyond a length of 7 eliminates the oldest (rightmost) variable
 
-function pushDaily(arr = [], value) {
-    return [...arr, value].slice(-7);
+// Add 'isNewDay' as a parameter to decide whether to push or replace
+function pushDaily(arr = [], value, isNewDay) {
+    if (isNewDay || arr.length === 0) {
+        // It's a new day: Add a new entry and keep only the last 7
+        return [...arr, value].slice(-7);
+    } else {
+        // It's the same day: Update the very last entry with the new total
+        const updatedArr = [...arr];
+        updatedArr[updatedArr.length - 1] = value;
+        return updatedArr;
+    }
 }
 
 // a meaty function that updates all the data in local storage on each prompt sent
@@ -244,6 +253,10 @@ async function setOrUpdateUsageData(payload) {
     const weekReset = result.current_week !== thisWeek;
     const monthReset = result.current_month !== thisMonth;
 
+    const updatedCO2 = (dayReset ? 0 : (result.daily_co2_current ?? 0)) + payload.prompt.co2_g;
+    const updatedEnergy = (dayReset ? 0 : (result.daily_energy_current ?? 0)) + payload.prompt.energy_wh;
+    const updatedWater = (dayReset ? 0 : (result.daily_water_current ?? 0)) + payload.prompt.water_l;
+
     const prevTotalCO2 = result.total_co2_output_g ?? 0;
     const prevTotalEnergy = result.total_energy_consumption_wh ?? 0;
     const prevTotalWater = result.total_water_consumption_l ?? 0;
@@ -261,38 +274,30 @@ async function setOrUpdateUsageData(payload) {
         // every single one of these checks if the corresponding reset is true, and if so
         // previous becomes current, current becomes 0 
         daily_co2_previous: dayReset ? result.daily_co2_current : result.daily_co2_previous,
-        daily_co2_current: (dayReset ? 0 : result.daily_co2_current) + payload.prompt.co2_g,
+        daily_co2_current: updatedCO2,
         weekly_co2_previous: weekReset ? result.weekly_co2_current : result.weekly_co2_previous,
         weekly_co2_current: (weekReset ? 0 : result.weekly_co2_current) + payload.prompt.co2_g,
         monthly_co2_previous: monthReset ? result.monthly_co2_current : result.monthly_co2_previous,
         monthly_co2_current: (monthReset ? 0 : result.monthly_co2_current) + payload.prompt.co2_g,
 
         daily_energy_previous: dayReset ? result.daily_energy_current : result.daily_energy_previous,
-        daily_energy_current: (dayReset ? 0 : result.daily_energy_current) + payload.prompt.energy_wh,
+        daily_energy_current: updatedEnergy,
         weekly_energy_previous: weekReset ? result.weekly_energy_current : result.weekly_energy_previous,
         weekly_energy_current: (weekReset ? 0 : result.weekly_energy_current) + payload.prompt.energy_wh,
         monthly_energy_previous: monthReset ? result.monthly_energy_current : result.monthly_energy_previous,
         monthly_energy_current: (monthReset ? 0 : result.monthly_energy_current) + payload.prompt.energy_wh,
 
         daily_water_previous: dayReset ? result.daily_water_current : result.daily_water_previous,
-        daily_water_current: (dayReset ? 0 : result.daily_water_current) + payload.prompt.water_l,
+        daily_water_current: updatedWater,
         weekly_water_previous: weekReset ? result.weekly_water_current : result.weekly_water_previous,
         weekly_water_current: (weekReset ? 0 : result.weekly_water_current) + payload.prompt.water_l,
         monthly_water_previous: monthReset ? result.monthly_water_current : result.monthly_water_previous,
         monthly_water_current: (monthReset ? 0 : result.monthly_water_current) + payload.prompt.water_l,
 
-        daily_co2_history: dayReset
-            ? pushDaily(result.daily_co2_history, result.daily_co2_current)
-            : result.daily_co2_history,
-
-        daily_energy_history: dayReset
-            ? pushDaily(result.daily_energy_history, result.daily_energy_current)
-            : result.daily_energy_history,
-
-        daily_water_history: dayReset
-            ? pushDaily(result.daily_water_history, result.daily_water_current)
-            : result.daily_water_history,
-    });
+        daily_co2_history: pushDaily(result.daily_co2_history, updatedCO2, dayReset),
+        daily_energy_history: pushDaily(result.daily_energy_history, updatedEnergy, dayReset),
+        daily_water_history: pushDaily(result.daily_water_history, updatedWater, dayReset),
+    })
 }
 
 
@@ -304,97 +309,97 @@ async function setOrUpdateUsageData(payload) {
 
 // chromes addListener expects a sync callback, but we need async/await
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    // so we use an IIFE (Immediately Invoked Function Expression) (async () => {...}) ()
-    // 
-    (async () => {
-        // a switch statement, a different way to do if elif. In this example it looks at the msg.type
-        switch (msg.type) {
-            // this is called by the init(), so at the start of a session
-            case "GET_IDENTIFIERS": {
-                // array destructuring to create the variables on a single line
-                const [user_id, session_id, session_start, session_prompt_count, time_since_last_prompt] =
-                    // Promise.all will wait for all the functions to finish, then return all data at once
-                    await Promise.all([
-                        getOrCreateUserId(),
-                        getOrCreateSessionId(),
-                        getOrCreateSessionStart(),
-                        incrementSessionPromptCount(),
-                        getTimeSinceLastPrompt()
-                    ]);
+        // so we use an IIFE (Immediately Invoked Function Expression) (async () => {...}) ()
+        // 
+        (async () => {
+            // a switch statement, a different way to do if elif. In this example it looks at the msg.type
+            switch (msg.type) {
+                // this is called by the init(), so at the start of a session
+                case "GET_IDENTIFIERS": {
+                    // array destructuring to create the variables on a single line
+                    const [user_id, session_id, session_start, session_prompt_count, time_since_last_prompt] =
+                        // Promise.all will wait for all the functions to finish, then return all data at once
+                        await Promise.all([
+                            getOrCreateUserId(),
+                            getOrCreateSessionId(),
+                            getOrCreateSessionStart(),
+                            incrementSessionPromptCount(),
+                            getTimeSinceLastPrompt()
+                        ]);
 
-                // TRIGGER REGISTRATION: 
-                // This ensures that clicking "Get Started" in the popup 
-                // actually hits your https://ai-monitor.madebyshu.net/register endpoint.
-                const apiKey = await getOrCreateApiKey();
-
-                // update the timestamp only when the promises have finished
-                await updateLastPromptTime();
-
-                // send the response back to the content script
-                sendResponse({
-                    user_id,
-                    session_id,
-                    session_start,
-                    session_prompt_count,
-                    time_since_last_prompt,
-                    extension_version: chrome.runtime.getManifest().version,
-                    registered: !!apiKey
-                });
-                break;
-            }
-            // this is called after every  response
-            case "PROMPT_EVENT": {
-                try {
-                    // FIX: Pass the keys as an array []
-                    const stored = await storageGet(['data_sharing', 'onboardingComplete']);
-
-                    const isSharing = stored.data_sharing ?? false;
-                    const isOnboarded = stored.onboardingComplete ?? false;
-
-                    // Update local stats first
-                    await setOrUpdateUsageData(msg.payload);
-
-                    // Debugging tip: Add a log here to see why it's exiting
-                    console.log(`[AI Impact] Sharing: ${isSharing}, Onboarded: ${isOnboarded}`);
-
-                    if (!isSharing || !isOnboarded) {
-                        sendResponse({ status: "ok", sharing: false });
-                        return;
-                    }
-
+                    // TRIGGER REGISTRATION: 
+                    // This ensures that clicking "Get Started" in the popup 
+                    // actually hits your https://ai-monitor.madebyshu.net/register endpoint.
                     const apiKey = await getOrCreateApiKey();
-                    const res = await fetch("https://ai-monitor.madebyshu.net/events", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${apiKey}`
-                        },
-                        body: JSON.stringify(msg.payload)
+
+                    // update the timestamp only when the promises have finished
+                    await updateLastPromptTime();
+
+                    // send the response back to the content script
+                    sendResponse({
+                        user_id,
+                        session_id,
+                        session_start,
+                        session_prompt_count,
+                        time_since_last_prompt,
+                        extension_version: chrome.runtime.getManifest().version,
+                        registered: !!apiKey
                     });
-
-                    const text = await res.text();
-                    console.log("[AI Usage Meter] Server response:", text);
-
-                    // IMPORTANT: Move sendResponse here to ensure it only says sharing: true 
-                    // if the fetch actually happened.
-                    sendResponse({ status: "ok", sharing: true });
-
-                } catch (err) {
-                    console.error("[AI Usage Meter] Failed to send:", err);
-                    sendResponse({ status: "error", message: err.message });
+                    break;
                 }
-                break;
+                // this is called after every  response
+                case "PROMPT_EVENT": {
+                    try {
+                        // FIX: Pass the keys as an array []
+                        const stored = await storageGet(['data_sharing', 'onboardingComplete']);
+
+                        const isSharing = stored.data_sharing ?? false;
+                        const isOnboarded = stored.onboardingComplete ?? false;
+
+                        // Update local stats first
+                        await setOrUpdateUsageData(msg.payload);
+
+                        // Debugging tip: Add a log here to see why it's exiting
+                        console.log(`[AI Impact] Sharing: ${isSharing}, Onboarded: ${isOnboarded}`);
+
+                        if (!isSharing || !isOnboarded) {
+                            sendResponse({ status: "ok", sharing: false });
+                            return;
+                        }
+
+                        const apiKey = await getOrCreateApiKey();
+                        const res = await fetch("https://ai-monitor.madebyshu.net/events", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify(msg.payload)
+                        });
+
+                        const text = await res.text();
+                        console.log("[AI Usage Meter] Server response:", text);
+
+                        // IMPORTANT: Move sendResponse here to ensure it only says sharing: true 
+                        // if the fetch actually happened.
+                        sendResponse({ status: "ok", sharing: true });
+
+                    } catch (err) {
+                        console.error("[AI Usage Meter] Failed to send:", err);
+                        sendResponse({ status: "error", message: err.message });
+                    }
+                    break;
+                }
+
+
+
+                default:
+                    break;
             }
+        })(); //these () call the function immediately, and makes it run async
+        // without return true Chrome closes the channel immediately, and sendResponse() would fail
+        // because we have async functions. Return true is hit immediately
+        return true;
+    });
 
-
-
-            default:
-                break;
-        }
-    })(); //these () call the function immediately, and makes it run async
-    // without return true Chrome closes the channel immediately, and sendResponse() would fail
-    // because we have async functions. Return true is hit immediately
-    return true;
-});
-
-console.log("[AI Usage Meter] Background service worker loaded");
+    console.log("[AI Usage Meter] Background service worker loaded");
