@@ -80,6 +80,7 @@ h6 {
     --bg-color-accent: oklch(from var(--bg-color) calc(l - 0.05) c h);
     --text-color: oklch(0.91357 0.00106 11.782);
     --text-color-accent: oklch(0.6 0.001 11.7);
+    --tooltip-color: oklch(64.435% 0.2545 350.239);
     --divider-color: oklch(from var(--bg-color) calc(l + 0.18) c h);
 }
 
@@ -316,6 +317,10 @@ p {
     display: flex;
     margin-block-start: 0.5em;
 
+    >p:first-of-type {
+        position: absolute;
+    }
+
     >p:last-of-type {
         margin-inline-start: auto;
 
@@ -400,4 +405,67 @@ p {
 .graph-label {
     font-size: 0.8em;
     color: var(--text-color);
+}
+
+.popover-wrapper {
+    position: absolute;
+    top: -25%;
+    anchor-name: --cost-anchor;
+    display: inline-block;
+    border: none;
+    padding: 0;
+    background: none;
+    color: var(--tooltip-color);
+    font-size: 1.115rem;
+    font-weight: bold;
+}
+
+.popover-cost-text {
+    position-anchor: --cost-anchor;
+    position: fixed;
+    position-area: center top;
+    margin: 0;
+    padding-inline: 0.5em;
+    padding-block: 0.25em;
+    width: max-content;
+    border-color: white;
+    opacity: 0;
+    overflow: visible;
+    transform: translateY(-50%);
+    transition: all 250ms;
+    /* 
+    &::before {
+        content: '';
+        display: block;
+        width: 40px;
+        aspect-ratio: 1;
+        position: absolute;
+
+        background-color: red;
+
+        top: 75%;
+        left: 50%;
+        z-index: -1;
+
+        transform: translateX(-50%);
+        transform: rotate(45deg) translateY(25%) translateX(-50%);
+    } */
+
+    &::before {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+
+
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-top: 8px solid white;
+    }
+}
+
+.fade-in {
+    transform: translateY(-15%);
+    opacity: 1;
 }

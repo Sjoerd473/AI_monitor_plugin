@@ -328,6 +328,22 @@ function createTotalTab(data) {
     });
 }
 
+const costBtn = document.querySelector('.popover-wrapper')
+const costPopover = document.querySelector('.popover-cost-text')
+
+// Show on hover
+costBtn.addEventListener('mouseenter', () => {
+    costPopover.showPopover();
+    costPopover.classList.add('fade-in')
+})
+
+// Hide on leave
+costBtn.addEventListener('mouseleave', () => {
+    costPopover.hidePopover()
+    costPopover.classList.remove('fade-in')
+
+});
+
 // =========================
 //  TAB SWITCHING
 // =========================
