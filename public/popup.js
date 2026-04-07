@@ -2,7 +2,6 @@ const REGION_COSTS = {
     EU: {
         cost_eur_per_wh: 0.00028,
         cost_eur_per_l: 0.0045,
-        // €90 / 1,000,000 grams = €0.00009 per gram of CO2
         carbon_tax_eur_per_g: 0.00009
     },
     US: {
@@ -138,10 +137,7 @@ const comparisons = {
             label: 'toilet flushes',
             convert: ml => `${(ml / 6000).toFixed(2)} flushes`,
         },
-        {
-            label: 'sips of water',
-            convert: ml => `${Math.round(ml / 15)} sips`,
-        },
+
         {
             label: 'an Eco dishwasher cycle',
             convert: ml => `${(ml / 10000).toFixed(4)} cycles`,
@@ -255,12 +251,13 @@ function createEnergyTab(data) {
 
 function createWaterTab(data) {
     // stored in litres, display in ml for daily/weekly, litres for monthly
+    const history_in_ml = data.daily_water_history.map((value) => value * 1000) //convert l to ml
     const counts = document.querySelectorAll('.water-info .usage-count');
     counts[0].innerHTML = `${(data.daily_water_current * 1000).toFixed(1)}<span class="unit"> ml</span>`;
     counts[1].innerHTML = `${(data.weekly_water_current * 1000).toFixed(1)}<span class="unit"> ml</span>`;
     counts[2].innerHTML = `${data.monthly_water_current.toFixed(3)}<span class="unit"> L</span>`;
     document.querySelector('.water-info .example').innerHTML = getExample('water', data.daily_water_current * 1000);
-    drawBars('.water-info .graph-container', data.daily_water_history, '#1a7ca0', 'ml');
+    drawBars('.water-info .graph-container', history_in_ml, '#1a7ca0', 'ml');
 }
 
 function createTotalTab(data) {
@@ -371,7 +368,14 @@ document.querySelectorAll('.buttons button').forEach(btn => {
         });
         btn.classList.add('active');
         panels[btn.id].classList.add('active');
-        svgs[btn.id]?.classList.add('active');
+        console.log(btn.id)
+        if (btn.id === 'total-btn') {
+            Object.values(svgs).forEach(svg => {
+                svg.classList.add('active')
+            })
+        } else {
+            svgs[btn.id]?.classList.add('active');
+        }
     });
 });
 
