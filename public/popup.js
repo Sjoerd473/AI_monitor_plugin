@@ -187,32 +187,33 @@ function formatTime(seconds) {
 function drawBars(selector, data, color, unit) {
     const container = document.querySelector(selector);
     if (!container) return;
-    // if for some reason we cannot draw a graph, show some
-    // different HTML
+
     if (!data || !Array.isArray(data) || data.length === 0) {
         container.innerHTML = `<p class='missing-graph'>No data yet</p>`;
         return;
     }
-    // get the highest value in the data to base
-    // the graph lenght off of
-    const max = Math.max(...data);
-    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S']; // 0=Sun, 1=Mon ... 6=Sat
-    const todayIndex = new Date().getDay();
 
-    // data[0] = today, data[1] = yesterday, data[2] = 2 days ago...
-    // we want to display Mon→Sun left to right, so we need to reorder
+    const max = Math.max(...data);
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const todayIndex = new Date().getDay();
+    const lastIndex = data.length - 1;
 
     const bars = data.map((v, i) => {
         const heightPct = max > 0 ? Math.round((v / max) * 100) : 0;
-        const dayIndex = (todayIndex - i + 7) % 7;
-        const isToday = i === 0; // data[0] is always today
+
+        // Offset is how many days PRIOR to today this entry is.
+        // If i is the last index, offset is 0 (today).
+        const offset = lastIndex - i;
+        const dayIndex = (todayIndex - offset + 7) % 7;
+
+        const isToday = i === lastIndex;
         const background = isToday ? color : color + '55';
-        const value = parseFloat(v.toFixed(4))
+        const value = parseFloat(v.toFixed(4));
 
         return { heightPct, dayLabel: days[dayIndex], background, dayIndex, value };
     });
 
-    // sort by dayIndex so Mon(1) → Tue(2) → ... → Sun(0 becomes 7)
+    // Reorder to display Monday (1) through Sunday (0 -> 7)
     bars.sort((a, b) => {
         const ai = a.dayIndex === 0 ? 7 : a.dayIndex;
         const bi = b.dayIndex === 0 ? 7 : b.dayIndex;
@@ -265,15 +266,23 @@ function createTotalTab(data) {
     const toggle = document.querySelector('.ball-wrapper')
     const ball = document.querySelector('.ball')
     const toggleText = document.querySelector('.data-toggle-text')
+    const co2Span = document.querySelector('#carbon-cost')
+    const energySpan = document.querySelector('#energy-cost')
+    const waterSpan = document.querySelector('#water-cost')
+
     const isSharing = data.data_sharing
 
     // 1. Identify the region (Default to EU if not set)
     const REGION = REGION_COSTS.EU;
 
     // 2. Perform Calculations
+    const carbonTax = data.total_co2_output_g * REGION.carbon_tax_eur_per_g;
     const energyCost = data.total_energy_consumption_wh * REGION.cost_eur_per_wh;
     const waterCost = data.total_water_consumption_l * REGION.cost_eur_per_l;
-    const carbonTax = data.total_co2_output_g * REGION.carbon_tax_eur_per_g;
+
+    co2Span.textContent = carbonTax.toFixed(4)
+    energySpan.textContent = energyCost.toFixed(4)
+    waterSpan.textContent = waterCost.toFixed(4)
 
     const totalEnvironmentalDebt = energyCost + waterCost + carbonTax;
 

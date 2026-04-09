@@ -469,23 +469,10 @@ p {
     overflow: visible;
     transform: translateY(-50%);
     transition: all 250ms;
-    /* 
-    &::before {
-        content: '';
-        display: block;
-        width: 40px;
-        aspect-ratio: 1;
-        position: absolute;
 
-        background-color: red;
-
-        top: 75%;
-        left: 50%;
-        z-index: -1;
-
-        transform: translateX(-50%);
-        transform: rotate(45deg) translateY(25%) translateX(-50%);
-    } */
+    >p:last-of-type {
+        text-align: center;
+    }
 
     &::before {
         content: "";
