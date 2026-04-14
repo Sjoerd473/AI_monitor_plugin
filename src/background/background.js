@@ -63,8 +63,6 @@ async function createNewUser() {
     const thisMonth = now.toISOString().slice(0, 7);
 
     await storageSet({
-        onboardingComplete: false,
-        data_sharing: false,
 
         total_co2_output_g: 0,
         total_energy_consumption_wh: 0,

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Impact Monitor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Anonymously monitor the environmental cost of your AI usage. No personal data or text is ever stored.",
   "permissions": [
     "storage"
