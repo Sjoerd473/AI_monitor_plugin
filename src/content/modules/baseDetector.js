@@ -136,7 +136,7 @@ export class baseDetector extends Parser {
         // This is watching for new AI replies
         // A mutation observer watches for  DOM changes
         const observer = new MutationObserver(() => {
-            // ✅ Use getLastAssistantMessage() instead of hardcoded .prose
+
             const assistantText = this.getLastAssistantMessage();
             const currentInput = this.getActiveEditorText().trim();
 

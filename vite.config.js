@@ -8,7 +8,7 @@ export default defineConfig({
             targets: [
                 { src: 'manifest.json', dest: '.' },
                 { src: 'public/popup.html', dest: '.' },
-                { src: 'public/icon*.png', dest: '.' }   // Copy icons manually
+                { src: 'public/icon*.png', dest: '.' }   
             ]
         })
     ],
@@ -19,7 +19,7 @@ export default defineConfig({
                 background: resolve(__dirname, 'src/background/background.js'),
             },
             output: {
-                // Remove 'src/' from the start to make it flat
+             
                 entryFileNames: '[name].js',
             }
         },
