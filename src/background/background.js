@@ -27,7 +27,7 @@ async function storageSet(items) {
 //  ID GENERATORS
 // =========================
 function generateRandomId(bytes = DEFAULT_SESSION_BYTES) {
-    // generate an array with 16 (by default) bytes
+    // generate an array with 32 (by default) bytes
     // this does not return the type of array we want
     const arr = crypto.getRandomValues(new Uint8Array(bytes));
     // destructure and immediately turn it into an actual array
@@ -393,7 +393,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
-                            "Authorization": `Bearer ${apiKey}`
+                            "Authorization": `Bearer ${apiKey}`,
+                            "X-Extension-Id": chrome.runtime.id
                         },
                         body: JSON.stringify(msg.payload)
                     });
