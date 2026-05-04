@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Impact Monitor",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Anonymously monitor the environmental cost of your AI usage. No personal data or text is ever stored.",
   "permissions": [
     "storage"
@@ -17,6 +17,7 @@
     "https://claude.ai/*",
     "https://gemini.google.com/*",
     "https://www.perplexity.ai/*",
+    "https://copilot.microsoft.com/*",
     "https://ai-monitor.madebyshu.net/*"
   ],
   "background": {
@@ -32,7 +33,8 @@
         "https://chatgpt.com/*",
         "https://claude.ai/*",
         "https://gemini.google.com/*",
-        "https://www.perplexity.ai/*"
+        "https://www.perplexity.ai/*",
+        "https://copilot.microsoft.com/*"
       ],
       "js": [
         "main.js"

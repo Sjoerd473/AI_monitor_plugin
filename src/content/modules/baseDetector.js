@@ -74,49 +74,54 @@ export class baseDetector extends Parser {
     }
 
 
-// helper method that waits for selected elements to appear
-// the pages we are looking at are not instantly completely readable
+    // helper method that waits for selected elements to appear
+    // the pages we are looking at are not instantly completely readable
     waitForElement(selector, timeout = 30000) {
-        // ensures selectors is always an array
         const selectors = Array.isArray(selector) ? selector : [selector];
         return new Promise((resolve, reject) => {
             const start = Date.now();
             const check = () => {
-                // if any selector exists, resolve. If timeout exceded, reject
-                // otherwise schedule the next check
                 for (const sel of selectors) {
-                    const el = document.querySelector(sel);
+                    // Use the deepQuerySelector instead of document.querySelector
+                    const el = this.deepQuerySelector(sel);
                     if (el) { resolve(el); return; }
                 }
                 if (Date.now() - start > timeout) {
-                    reject(new Error(`None of [${selectors.join(', ')}] found within ${timeout}ms`));
+                    reject(new Error(`None of [${selectors.join(', ')}] found (Deep Search) within ${timeout}ms`));
                     return;
                 }
-                // repeats every 100ms, until element appears or timeout is reached
                 setTimeout(check, 100);
             };
-            // check is a self rescheduling loop
             check();
         });
     }
 
     async startDetection(targetEditor, targetChatContainer) {
         try {
-            // Wait for editor = React is ready
             await this.waitForElement(targetEditor);
-
-            // Explicitly grab #root as the container, NOT the editor
-            const chatContainer = document.querySelector(targetChatContainer);
-            if (!chatContainer) throw new Error('#root not found');
+            const chatContainer = await this.waitForElement(targetChatContainer); // ✅ waits + deep searches
 
             console.log("[AI Usage Meter] Container found:", chatContainer);
-            console.log("[AI Usage Meter] Container children:", chatContainer.children.length);
-
             this.startUniversalDetection(chatContainer);
-
         } catch (error) {
             console.error("[AI Usage Meter] Detection setup failed:", error);
         }
+    }
+
+    deepQuerySelector(selector, root = document) {
+        // Try the standard way first
+        const el = root.querySelector(selector);
+        if (el) return el;
+
+        // If not found, look through all elements that have a shadowRoot
+        const allElements = root.querySelectorAll('*');
+        for (const node of allElements) {
+            if (node.shadowRoot) {
+                const shadowEl = this.deepQuerySelector(selector, node.shadowRoot);
+                if (shadowEl) return shadowEl;
+            }
+        }
+        return null;
     }
 
 
@@ -126,7 +131,7 @@ export class baseDetector extends Parser {
 
         // every 300ms it gets the text that the user has written, and saves it into
         // last input
-    
+
         setInterval(() => {
             const text = this.getActiveEditorText().trim();
             if (text.length > 0) {
@@ -167,7 +172,7 @@ export class baseDetector extends Parser {
 
     setupListeners(editor, chatContainer) {
 
- 
+
         // a wrapper is needed because this function must be called by an eventlistener
         // without the wrapper, an event object would be added to the parameters, breaking the function
         // it also needs to be an arrow function to preserve the THIS context
